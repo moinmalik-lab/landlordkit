@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LandlordKit — Free operations system for independent landlords</title>
+<meta name="description" content="Track rent, log expenses, manage maintenance, and generate year-end reports. Free tools for landlords managing 1–10 properties. No subscription required.">
+<link rel="stylesheet" href="assets/css/main.css">
+<style>
+.hero { background:var(--bg); padding:72px 0 56px; }
+.hero-badge { display:inline-flex;align-items:center;gap:6px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);border-radius:20px;font-size:13px;font-weight:500;padding:5px 14px;margin-bottom:22px; }
+.hero h1 { max-width:560px; margin-bottom:18px; }
+.hero h1 em { font-style:normal; color:var(--blue); }
+.hero-sub { font-size:17px; max-width:520px; margin-bottom:32px; line-height:1.75; }
+.demo-card { border-radius:var(--r-xl); overflow:hidden; border:1px solid var(--border); background:var(--surface); box-shadow:0 8px 32px rgba(0,0,0,.1); }
+.demo-titlebar { background:var(--bg); border-bottom:1px solid var(--border); padding:12px 16px; display:flex; align-items:center; gap:10px; }
+.demo-titlebar-dot { width:11px;height:11px;border-radius:50%; }
+.demo-title { font-size:13px; font-weight:600; color:var(--txt2); margin-left:4px; }
+.demo-kpis { display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border); }
+.demo-kpi { padding:12px 14px; border-right:1px solid var(--border); }
+.demo-kpi:last-child { border-right:none; }
+.demo-kpi-label { font-size:10px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px; }
+.demo-kpi-val { font-family:var(--font-d);font-size:18px;font-weight:700;color:var(--txt); }
+.demo-kpi-val.green { color:var(--green); }
+.demo-kpi-val.red { color:var(--red); }
+.demo-table { width:100%;border-collapse:collapse;font-size:13px; }
+.demo-table th { padding:8px 14px;font-size:10px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;text-align:left;border-bottom:1px solid var(--border);background:var(--bg); }
+.demo-table td { padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle; }
+.demo-table tr:last-child td { border-bottom:none; }
+.demo-table tr:hover td { background:var(--bg); }
+.demo-badge { display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:500; }
+.db-paid    { background:var(--green-bg);color:var(--green); }
+.db-late    { background:var(--red-bg);color:var(--red); }
+.db-partial { background:var(--amber-bg);color:var(--amber); }
+.db-vacant  { background:var(--bg);color:var(--txt3);border:1px solid var(--border); }
+
+.section-features { padding:80px 0; background:var(--surface); }
+.feature-icon-income  { background:var(--green-bg); }
+.feature-icon-income svg { color:var(--green); stroke:var(--green); }
+.feature-icon-expense { background:var(--amber-bg); }
+.feature-icon-expense svg { color:var(--amber); stroke:var(--amber); }
+.feature-icon-maint   { background:var(--red-bg); }
+.feature-icon-maint svg { color:var(--red); stroke:var(--red); }
+.feature-icon-tenant  { background:var(--blue-bg); }
+.feature-icon-tenant svg { color:var(--blue); stroke:var(--blue); }
+.feature-icon-docs    { background:var(--purple-bg); }
+.feature-icon-docs svg { color:var(--purple); stroke:var(--purple); }
+.feature-icon-reports { background:var(--bg); border:1px solid var(--border); }
+.feature-icon-reports svg { color:var(--txt2); stroke:var(--txt2); }
+
+.section-how { padding:80px 0; background:var(--bg); }
+.how-steps { display:grid;grid-template-columns:repeat(3,1fr);gap:32px; }
+.how-step { text-align:center; }
+.how-num { width:48px;height:48px;border-radius:50%;background:var(--blue);color:#fff;font-family:var(--font-d);font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 16px; }
+.how-step h3 { margin-bottom:8px; }
+.how-step p { font-size:14px; }
+
+.section-calc { padding:80px 0; background:var(--surface); }
+.calc-cta-card { background:var(--blue-bg);border:1.5px solid var(--blue-bd);border-radius:var(--r-xl);padding:40px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center; }
+.calc-cta-inputs { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px; }
+
+.section-docs { padding:80px 0; background:var(--bg); }
+.doc-grid { display:grid;grid-template-columns:repeat(5,1fr);gap:12px; }
+.doc-card { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 16px;text-align:center;transition:border-color .2s,box-shadow .2s; }
+.doc-card:hover { border-color:var(--border2);box-shadow:var(--sh); }
+.doc-icon { font-size:24px;margin-bottom:10px; }
+.doc-name { font-size:13px;font-weight:500;color:var(--txt);margin-bottom:4px; }
+.doc-type { font-size:11px;color:var(--txt3); }
+
+.section-trust { padding:56px 0; background:var(--txt); text-align:center; }
+.section-trust h2 { color:#fff;margin-bottom:16px; }
+.section-trust p { color:rgba(255,255,255,.65);font-size:17px;max-width:600px;margin:0 auto 32px; }
+.trust-badges { display:flex;gap:24px;justify-content:center;flex-wrap:wrap; }
+.trust-badge { display:flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:var(--r-lg);color:rgba(255,255,255,.75);font-size:14px; }
+.trust-badge svg { width:18px;height:18px;stroke:rgba(255,255,255,.6); }
+
+@media(max-width:768px) {
+  .demo-kpis { grid-template-columns:1fr 1fr; }
+  .how-steps { grid-template-columns:1fr; }
+  .calc-cta-card { grid-template-columns:1fr; }
+  .doc-grid { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Free for landlords with 1–10 properties
+        </div>
+        <h1>Run your rentals without <em>the chaos</em></h1>
+        <p class="hero-sub">Track rent, log every expense, manage maintenance, and generate tax-ready year-end reports — all in your browser. No subscription, no sign-up, no data leaving your device.</p>
+        <div class="hero-actions">
+          <a href="income/rent-roll.html" class="btn btn-primary">Start with rent roll →</a>
+          <a href="calculators/break-even.html" class="btn btn-ghost">Break-even calculator</a>
+        </div>
+        <div class="hero-trust">
+          <div class="trust-item"><span class="trust-dot"></span>Free forever</div>
+          <div class="trust-item"><span class="trust-dot"></span>No sign-up required</div>
+          <div class="trust-item"><span class="trust-dot"></span>Works offline</div>
+        </div>
+      </div>
+      <div>
+        <div class="demo-card">
+          <div class="demo-titlebar">
+            <div class="demo-titlebar-dot" style="background:#ff5f57"></div>
+            <div class="demo-titlebar-dot" style="background:#febc2e"></div>
+            <div class="demo-titlebar-dot" style="background:#28c840"></div>
+            <span class="demo-title">Monthly rent roll — July 2026</span>
+          </div>
+          <div class="demo-kpis">
+            <div class="demo-kpi"><div class="demo-kpi-label">Expected</div><div class="demo-kpi-val">$7,650</div></div>
+            <div class="demo-kpi"><div class="demo-kpi-label">Collected</div><div class="demo-kpi-val green">$4,700</div></div>
+            <div class="demo-kpi"><div class="demo-kpi-label">Outstanding</div><div class="demo-kpi-val red">$2,950</div></div>
+            <div class="demo-kpi"><div class="demo-kpi-label">Occupancy</div><div class="demo-kpi-val">86%</div></div>
+          </div>
+          <table class="demo-table">
+            <thead><tr><th>Unit</th><th>Tenant</th><th>Rent</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td><strong>101</strong><span style="display:block;font-size:11px;color:var(--txt3)">123 Oak St</span></td><td>John Martinez</td><td>$1,200</td><td><span class="demo-badge db-paid">✓ Paid</span></td></tr>
+              <tr><td><strong>102</strong><span style="display:block;font-size:11px;color:var(--txt3)">123 Oak St</span></td><td>Sarah Johnson</td><td>$1,450</td><td><span class="demo-badge db-late">⚠ Late 8d</span></td></tr>
+              <tr><td><strong>201</strong><span style="display:block;font-size:11px;color:var(--txt3)">456 Elm Ave</span></td><td>Mike Chen</td><td>$1,350</td><td><span class="demo-badge db-paid">✓ Paid</span></td></tr>
+              <tr><td><strong>202</strong><span style="display:block;font-size:11px;color:var(--txt3)">456 Elm Ave</span></td><td>Lisa Park</td><td>$1,650</td><td><span class="demo-badge db-partial">Partial</span></td></tr>
+              <tr><td><strong>103</strong><span style="display:block;font-size:11px;color:var(--txt3)">123 Oak St</span></td><td>—</td><td>$1,100</td><td><span class="demo-badge db-vacant">Vacant</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section-how">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-eyebrow">How it works</div>
+      <h2>Up and running in minutes</h2>
+      <p>No account to create. Open any tool, enter your data, and your browser saves it automatically.</p>
+    </div>
+    <div class="how-steps">
+      <div class="how-step">
+        <div class="how-num">1</div>
+        <h3>Add your properties</h3>
+        <p>Enter each property and its units once. Every tool — rent roll, expense log, maintenance tracker — uses this same list.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-num">2</div>
+        <h3>Record daily activity</h3>
+        <p>Log each rent payment as it arrives, each expense as you pay it, each maintenance request as it comes in.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-num">3</div>
+        <h3>Generate clean reports</h3>
+        <p>Monthly cash flow, quarterly summaries, and a year-end Schedule E-ready report — all generated automatically.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section-features">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-eyebrow">Everything in one place</div>
+      <h2>Six tools that cover your full operation</h2>
+      <p>From the moment a tenant signs to the day they move out — and everything in between.</p>
+    </div>
+    <div class="grid-3">
+      <div class="feature-card">
+        <div class="feature-icon feature-icon-income">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        </div>
+        <h3>Income tracking</h3>
+        <p>Monthly rent roll, payment log, late rent tracker, and security deposit register. Know who's paid and who owes — at a glance.</p>
+        <div class="feature-links">
+          <a href="income/rent-roll.html" class="feature-link">Rent roll</a>
+          <a href="income/late-tracker.html" class="feature-link">Late rent tracker</a>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon feature-icon-expense">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </div>
+        <h3>Expense logging</h3>
+        <p>Every cost logged against the right property and the right IRS Schedule E category. Year-end tax prep becomes a 10-minute job.</p>
+        <div class="feature-links">
+          <a href="expenses/index.html" class="feature-link">Expense log</a>
+          <a href="expenses/annual-summary.html" class="feature-link">Annual summary</a>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon feature-icon-maint">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        </div>
+        <h3>Maintenance management</h3>
+        <p>Tenant request forms, work order tracking, contractor directory, and preventive maintenance schedule — nothing falls through the cracks.</p>
+        <div class="feature-links">
+          <a href="maintenance/request-form.html" class="feature-link">Request form</a>
+          <a href="maintenance/work-orders.html" class="feature-link">Work orders</a>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon feature-icon-tenant">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <h3>Tenant management</h3>
+        <p>Profiles, lease tracker with renewal alerts, move-in/move-out records, and a communication log that protects you in disputes.</p>
+        <div class="feature-links">
+          <a href="tenants/index.html" class="feature-link">Tenant profiles</a>
+          <a href="tenants/lease-tracker.html" class="feature-link">Lease tracker</a>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon feature-icon-docs">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <h3>Document templates</h3>
+        <p>10 ready-to-use templates: lease agreements, rent receipts, move-in inspection forms, notice-to-pay letters, and more.</p>
+        <div class="feature-links">
+          <a href="documents/index.html" class="feature-link">All templates</a>
+          <a href="documents/lease-agreement.html" class="feature-link">Lease agreement</a>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon feature-icon-reports">
+          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <h3>Periodic reports</h3>
+        <p>Daily snapshot, weekly review, monthly cash flow, quarterly summary, and a year-end report your accountant can actually use.</p>
+        <div class="feature-links">
+          <a href="reports/index.html" class="feature-link">Monthly cash flow</a>
+          <a href="reports/annual.html" class="feature-link">Year-end report</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CALCULATOR CTA -->
+<section class="section-calc">
+  <div class="container">
+    <div class="calc-cta-card">
+      <div>
+        <div class="section-eyebrow" style="text-align:left;margin-bottom:12px;">Break-even calculator</div>
+        <h2 style="font-size:1.75rem;margin-bottom:14px;">What rent do you need to charge?</h2>
+        <p style="margin-bottom:24px;">Enter your costs below. The calculator tells you the minimum rent to charge — accounting for vacancy and management fees — so you never underprice a unit again.</p>
+        <a href="calculators/break-even.html" class="btn btn-primary">Open full calculator →</a>
+      </div>
+      <div>
+        <div class="calc-cta-inputs" id="mini-calc-inputs">
+          <div class="form-group" style="margin:0;">
+            <label>Mortgage (P&I)</label>
+            <div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="mc-mortgage" value="1200" oninput="miniCalc()"></div>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Tax + Insurance</label>
+            <div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="mc-taxins" value="350" oninput="miniCalc()"></div>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Maintenance reserve</label>
+            <div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="mc-maint" value="150" oninput="miniCalc()"></div>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Vacancy rate</label>
+            <div class="input-wrap has-suf"><input type="number" id="mc-vac" value="8" oninput="miniCalc()"><span class="input-suf">%</span></div>
+          </div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--blue-bd);border-radius:var(--r-lg);padding:18px 20px;">
+          <div style="font-size:12px;color:var(--txt3);margin-bottom:4px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;">Minimum break-even rent</div>
+          <div id="mc-result" style="font-family:var(--font-d);font-size:36px;font-weight:700;color:var(--blue);line-height:1;">$1,848</div>
+          <div id="mc-note" style="font-size:13px;color:var(--txt2);margin-top:5px;">Covers all costs at 8% vacancy. Any rent above this generates profit.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOCUMENTS -->
+<section class="section-docs">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-eyebrow">Document templates</div>
+      <h2>Every form a landlord needs</h2>
+      <p>10 ready-to-use templates. Fill online or download as PDF — no account required.</p>
+    </div>
+    <div class="doc-grid">
+      <a href="documents/lease-agreement.html" class="doc-card">
+        <div class="doc-icon">📋</div>
+        <div class="doc-name">Lease agreement</div>
+        <div class="doc-type">Month-to-month & fixed</div>
+      </a>
+      <a href="documents/rent-receipt.html" class="doc-card">
+        <div class="doc-icon">🧾</div>
+        <div class="doc-name">Rent receipt</div>
+        <div class="doc-type">Required in 38 states</div>
+      </a>
+      <a href="documents/move-in-inspection.html" class="doc-card">
+        <div class="doc-icon">🏠</div>
+        <div class="doc-name">Move-in inspection</div>
+        <div class="doc-type">Room-by-room checklist</div>
+      </a>
+      <a href="documents/move-out-inspection.html" class="doc-card">
+        <div class="doc-icon">🔑</div>
+        <div class="doc-name">Move-out inspection</div>
+        <div class="doc-type">Deposit protection</div>
+      </a>
+      <a href="documents/notice-to-pay.html" class="doc-card">
+        <div class="doc-icon">📬</div>
+        <div class="doc-name">Notice to pay</div>
+        <div class="doc-type">State-specific periods</div>
+      </a>
+      <a href="documents/rent-increase-notice.html" class="doc-card">
+        <div class="doc-icon">📈</div>
+        <div class="doc-name">Rent increase notice</div>
+        <div class="doc-type">30/60-day versions</div>
+      </a>
+      <a href="documents/lease-renewal.html" class="doc-card">
+        <div class="doc-icon">🔄</div>
+        <div class="doc-name">Lease renewal</div>
+        <div class="doc-type">With rent update</div>
+      </a>
+      <a href="documents/notice-of-entry.html" class="doc-card">
+        <div class="doc-icon">🚪</div>
+        <div class="doc-name">Notice of entry</div>
+        <div class="doc-type">24/48-hr requirement</div>
+      </a>
+      <a href="documents/deposit-return.html" class="doc-card">
+        <div class="doc-icon">💰</div>
+        <div class="doc-name">Deposit return letter</div>
+        <div class="doc-type">Itemized deductions</div>
+      </a>
+      <a href="documents/maintenance-request.html" class="doc-card">
+        <div class="doc-icon">🔧</div>
+        <div class="doc-name">Maintenance request</div>
+        <div class="doc-type">Tenant-facing form</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<section class="section-trust">
+  <div class="container">
+    <h2>Built by an accountant who's done this for 17 years</h2>
+    <p>LandlordKit was designed by a CPA specializing in US landlord bookkeeping — every form, every category, every report reflects how it actually needs to work at tax time.</p>
+    <div class="trust-badges">
+      <div class="trust-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        No sign-up required
+      </div>
+      <div class="trust-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Works in any browser
+      </div>
+      <div class="trust-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Schedule E-aligned
+      </div>
+      <div class="trust-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Free forever
+      </div>
+    </div>
+    <div style="margin-top:40px;">
+      <a href="income/rent-roll.html" class="btn btn-primary" style="font-size:16px;padding:14px 32px;">Start with rent roll — it takes 2 minutes →</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="nav-logo">
+          <div class="nav-logo-mark"><svg viewBox="0 0 24 24" fill="white"><path d="M3 9.5L12 3l9 6.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/></svg></div>
+          <span class="nav-logo-text">Landlord<span style="color:#93c5fd">Kit</span></span>
+        </div>
+        <p>Free operations system for independent landlords. Built by accountants, not venture capitalists.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Income</h4>
+        <a href="income/rent-roll.html">Rent roll</a>
+        <a href="income/payment-log.html">Payment log</a>
+        <a href="income/late-tracker.html">Late rent tracker</a>
+        <a href="income/deposit-register.html">Deposit register</a>
+      </div>
+      <div class="footer-col">
+        <h4>Tools</h4>
+        <a href="expenses/index.html">Expense log</a>
+        <a href="maintenance/request-form.html">Maintenance</a>
+        <a href="tenants/index.html">Tenants</a>
+        <a href="reports/index.html">Reports</a>
+      </div>
+      <div class="footer-col">
+        <h4>Calculators</h4>
+        <a href="calculators/break-even.html">Break-even rent</a>
+        <a href="calculators/late-fee.html">Late fee</a>
+        <a href="calculators/rental-yield.html">Rental yield</a>
+        <a href="calculators/deposit-return.html">Deposit return</a>
+      </div>
+      <div class="footer-col">
+        <h4>Documents</h4>
+        <a href="documents/lease-agreement.html">Lease agreement</a>
+        <a href="documents/rent-receipt.html">Rent receipt</a>
+        <a href="documents/move-in-inspection.html">Move-in form</a>
+        <a href="documents/notice-to-pay.html">Notice to pay</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 LandlordKit · Built by <a href="#" style="color:rgba(255,255,255,.5)">A&M Offshore Accounting</a></span>
+      <div style="display:flex;gap:20px;">
+        <a href="#" style="color:rgba(255,255,255,.4);font-size:13px;">Privacy</a>
+        <a href="#" style="color:rgba(255,255,255,.4);font-size:13px;">Terms</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/nav.js"></script>
+<script>
+function miniCalc() {
+  const mortgage = parseFloat(document.getElementById('mc-mortgage').value)||0;
+  const taxins   = parseFloat(document.getElementById('mc-taxins').value)||0;
+  const maint    = parseFloat(document.getElementById('mc-maint').value)||0;
+  const vac      = (parseFloat(document.getElementById('mc-vac').value)||0)/100;
+  const costs    = mortgage + taxins + maint;
+  const be       = vac < 1 ? costs/(1-vac) : costs;
+  document.getElementById('mc-result').textContent = '$'+Math.round(be).toLocaleString();
+  document.getElementById('mc-note').textContent = `Covers all costs at ${Math.round(vac*100)}% vacancy. Any rent above this generates profit.`;
+}
+miniCalc();
+</script>
+</body>
+</html>

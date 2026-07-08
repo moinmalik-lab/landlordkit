@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rent Roll — LandlordKit</title>
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+.rr-actions { display:flex;gap:6px;flex-wrap:wrap; }
+.rr-actions .btn { white-space:nowrap; }
+.tenant-cell { display:flex;align-items:center;gap:10px; }
+.calc-panel { margin-bottom:20px; }
+.prop-selector { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px; }
+.prop-tab { padding:6px 14px;border-radius:var(--r);border:1.5px solid var(--border);background:var(--surface);color:var(--txt2);font-size:13px;cursor:pointer;font-weight:500;transition:all .15s; }
+.prop-tab.active { border-color:var(--blue);background:var(--blue-bg);color:var(--blue); }
+.prop-tab:hover:not(.active) { border-color:var(--border2); }
+.balance-pos { color:var(--green);font-weight:500; }
+.balance-neg { color:var(--red);font-weight:500; }
+.row-vacant { opacity:.55; }
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div class="app-layout">
+  <aside class="sidebar"><div id="sidebar-root"></div></aside>
+  <main class="main-content">
+
+    <div class="page-header" style="margin:-32px -32px 24px;padding:20px 32px;">
+      <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> › <a href="#">Income</a> › Rent roll</div>
+      <div class="flex-between" style="flex-wrap:wrap;gap:12px;">
+        <div>
+          <h1 style="font-size:1.6rem;">Monthly rent roll</h1>
+          <p style="font-size:13px;margin:2px 0 0;color:var(--txt3);" id="month-label">July 2026</p>
+        </div>
+        <div class="rr-actions">
+          <button class="btn btn-ghost btn-sm" onclick="prevMonth()">← Prev</button>
+          <button class="btn btn-ghost btn-sm" onclick="nextMonth()">Next →</button>
+          <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddUnit()">+ Add unit</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Property tabs -->
+    <div class="prop-selector" id="prop-tabs"></div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" style="margin-bottom:20px;" id="kpi-grid">
+      <div class="kpi-card"><div class="kpi-label">Total expected</div><div class="kpi-value" id="kpi-exp">—</div><div class="kpi-sub" id="kpi-exp-sub">—</div></div>
+      <div class="kpi-card kpi-green"><div class="kpi-label">Collected</div><div class="kpi-value" id="kpi-col">—</div><div class="kpi-sub" id="kpi-col-pct">—</div></div>
+      <div class="kpi-card kpi-red"><div class="kpi-label">Outstanding</div><div class="kpi-value" id="kpi-out">—</div><div class="kpi-sub" id="kpi-out-units">—</div></div>
+      <div class="kpi-card"><div class="kpi-label">Occupancy</div><div class="kpi-value" id="kpi-occ">—</div><div class="kpi-sub" id="kpi-occ-sub">—</div></div>
+    </div>
+
+    <!-- Late fee calculator panel -->
+    <div class="calc-panel hidden" id="fee-panel">
+      <div style="background:var(--blue-bg);border:1.5px solid var(--blue-bd);border-radius:var(--r-xl);padding:18px 22px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <span style="font-size:14px;font-weight:600;color:var(--blue);">💰 Late fee calculator — <span id="fee-tenant">Unit</span></span>
+          <button class="btn btn-xs btn-ghost" onclick="document.getElementById('fee-panel').classList.add('hidden')">Close</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+          <div class="form-group" style="margin:0;"><label>Monthly rent ($)</label><input type="number" id="fc-rent" value="1450" oninput="calcFee()"></div>
+          <div class="form-group" style="margin:0;"><label>Days overdue</label><input type="number" id="fc-days" value="8" oninput="calcFee()"></div>
+          <div class="form-group" style="margin:0;"><label>State</label>
+            <select id="fc-state" onchange="calcFee()">
+              <option value="CA">California — 6% / 3-day grace</option>
+              <option value="TX">Texas — 12% / 2-day grace</option>
+              <option value="FL">Florida — 5% / no grace</option>
+              <option value="NY">New York — 3% / 5-day grace</option>
+              <option value="AZ">Arizona — $5 flat + 5%</option>
+              <option value="WA">Washington — 10% / no grace</option>
+            </select>
+          </div>
+        </div>
+        <div class="calc-result-row">
+          <div><div style="font-size:11px;color:var(--txt3);margin-bottom:3px;">Late fee owed</div><div class="calc-fee-val" id="fc-result">$87.00</div></div>
+          <div class="calc-fee-note" id="fc-note">CA: 3-day grace passed. 6% of rent.</div>
+          <button class="btn btn-xs btn-success" onclick="copyFee()">Copy to log</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <div class="filter-group">
+          <button class="filter-btn active" onclick="setFilter('all',this)">All units</button>
+          <button class="filter-btn f-paid" onclick="setFilter('paid',this)">Paid</button>
+          <button class="filter-btn f-partial" onclick="setFilter('partial',this)">Partial</button>
+          <button class="filter-btn f-late" onclick="setFilter('late',this)">Late / Unpaid</button>
+          <button class="filter-btn" onclick="setFilter('vacant',this)">Vacant</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Unit</th><th>Tenant</th><th>Monthly rent</th>
+            <th>Due date</th><th>Paid date</th><th>Amount paid</th>
+            <th>Balance</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rr-tbody">
+          <tr><td colspan="9"><div class="empty-state"><h3>No units yet</h3><p>Add your first property and unit to get started.</p><button class="btn btn-primary" onclick="openAddUnit()">+ Add unit</button></div></td></tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" style="color:var(--txt2);">Totals (occupied)</td>
+            <td id="ft-rent">—</td><td></td><td></td>
+            <td id="ft-paid">—</td>
+            <td id="ft-bal">—</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<!-- ADD UNIT MODAL (injected dynamically) -->
+
+<script src="../assets/js/nav.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  buildSidebar('income');
+  renderPropTabs();
+  renderTable();
+});
+
+/* ── STATE ── */
+let currentMonth = new Date().getMonth();
+let currentYear  = new Date().getFullYear();
+let propFilter   = 'all';
+let statusFilter = 'all';
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+/* ── SEED DATA ── */
+function seedData() {
+  if (lk.get('units')) return;
+  const units = [
+    {id:'u1',unit:'101',prop:'oak',propLabel:'123 Oak St',tenant:'John Martinez',initials:'JM',avatarColor:'#dbeafe',rent:1200,dueDay:1},
+    {id:'u2',unit:'102',prop:'oak',propLabel:'123 Oak St',tenant:'Sarah Johnson',initials:'SJ',avatarColor:'#fce7f3',rent:1450,dueDay:1},
+    {id:'u3',unit:'103',prop:'oak',propLabel:'123 Oak St',tenant:'',initials:'',avatarColor:'',rent:1100,dueDay:null,vacant:true},
+    {id:'u4',unit:'201',prop:'elm',propLabel:'456 Elm Ave',tenant:'Mike Chen',initials:'MC',avatarColor:'#d1fae5',rent:1350,dueDay:1},
+    {id:'u5',unit:'202',prop:'elm',propLabel:'456 Elm Ave',tenant:'Lisa Park',initials:'LP',avatarColor:'#ede9fe',rent:1650,dueDay:1},
+    {id:'u6',unit:'203',prop:'elm',propLabel:'456 Elm Ave',tenant:'Bob Thompson',initials:'BT',avatarColor:'#fef3c7',rent:1100,dueDay:1},
+    {id:'u7',unit:'301',prop:'pine',propLabel:'789 Pine Rd',tenant:'Emma Davis',initials:'ED',avatarColor:'#fee2e2',rent:900,dueDay:1},
+  ];
+  lk.set('units', units);
+  const pay = {
+    u1: { paid:true, paidDate:'Jul 1', amtPaid:1200 },
+    u2: { paid:false, paidDate:'', amtPaid:0, daysLate:8 },
+    u4: { paid:true, paidDate:'Jul 2', amtPaid:1350 },
+    u5: { paid:true, paidDate:'Jul 3', amtPaid:1250 },
+    u7: { paid:true, paidDate:'Jun 30', amtPaid:900 },
+  };
+  lk.set('payments_7_2026', pay);
+}
+seedData();
+
+/* ── PROPERTY TABS ── */
+function getProps() {
+  const units = lk.get('units') || [];
+  const props = {'all':'All properties'};
+  units.forEach(u => { if (!props[u.prop]) props[u.prop] = u.propLabel; });
+  return props;
+}
+
+function renderPropTabs() {
+  const props = getProps();
+  const el = document.getElementById('prop-tabs');
+  el.innerHTML = Object.entries(props).map(([key,label]) =>
+    `<button class="prop-tab${propFilter===key?' active':''}" onclick="setProp('${key}',this)">${label}</button>`
+  ).join('');
+}
+
+function setProp(key, btn) {
+  propFilter = key;
+  document.querySelectorAll('.prop-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+/* ── MONTH NAV ── */
+function prevMonth() { currentMonth--; if(currentMonth<0){currentMonth=11;currentYear--;} renderTable(); }
+function nextMonth() { currentMonth++; if(currentMonth>11){currentMonth=0;currentYear++;} renderTable(); }
+
+/* ── FILTER ── */
+function setFilter(f, btn) {
+  statusFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>{b.classList.remove('active');});
+  btn.classList.add('active');
+  renderTable();
+}
+
+/* ── RENDER TABLE ── */
+function renderTable() {
+  document.getElementById('month-label').textContent = MONTHS[currentMonth] + ' ' + currentYear;
+  const units = lk.get('units') || [];
+  const payKey = `payments_${currentMonth+1}_${currentYear}`;
+  const payments = lk.get(payKey) || {};
+
+  const filtered = units.filter(u => {
+    const pMatch = propFilter==='all' || u.prop===propFilter;
+    const pay = payments[u.id] || {};
+    const status = getStatus(u, pay);
+    const sMatch = statusFilter==='all'
+      || (statusFilter==='paid' && status==='paid')
+      || (statusFilter==='partial' && status==='partial')
+      || (statusFilter==='late' && (status==='late'||status==='unpaid'))
+      || (statusFilter==='vacant' && status==='vacant');
+    return pMatch && sMatch;
+  });
+
+  const tbody = document.getElementById('rr-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><h3>No units match this filter</h3><p>Try "All units" to see everything.</p></div></td></tr>';
+    updateKPIs([], payments);
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(u => {
+    const pay = payments[u.id] || {};
+    const status = getStatus(u, pay);
+    const badgeHtml = statusBadge(status, pay);
+    const balance = u.vacant ? null : (pay.amtPaid||0) - u.rent;
+    const balHtml = u.vacant ? '—' : balance===0 ? '<span style="color:var(--txt3);">—</span>' : balance>0 ? `<span class="balance-pos">+${fmtC(balance)}</span>` : `<span class="balance-neg">–${fmtC(Math.abs(balance))}</span>`;
+    const actHtml = buildActions(u, status);
+    const avatarHtml = u.initials ? `<span class="avatar" style="background:${u.avatarColor};color:var(--txt2);font-size:11px;">${u.initials}</span>` : '';
+    return `<tr class="${u.vacant?'row-vacant':''}">
+      <td><strong>${u.unit}</strong><span class="prop-tag">${u.propLabel}</span></td>
+      <td><div class="tenant-cell">${avatarHtml}<span>${u.vacant?'<span style="color:var(--txt3)">— Vacant —</span>':u.tenant}</span></div></td>
+      <td class="font-mono">${u.vacant?`<span style="color:var(--txt3)">${fmtC(u.rent)} <span style="font-size:11px">(est.)</span></span>`:fmtC(u.rent)}</td>
+      <td style="color:var(--txt3);">${u.dueDay ? u.dueDay+'st' : '—'}</td>
+      <td style="color:var(--txt3);">${pay.paidDate||'—'}</td>
+      <td class="font-mono">${pay.amtPaid ? fmtC(pay.amtPaid) : '—'}</td>
+      <td>${balHtml}</td>
+      <td>${badgeHtml}</td>
+      <td>${actHtml}</td>
+    </tr>`;
+  }).join('');
+
+  updateKPIs(filtered, payments);
+}
+
+function fmtC(n) { return '$'+Math.round(n).toLocaleString(); }
+
+function getStatus(u, pay) {
+  if (u.vacant) return 'vacant';
+  if (!pay.amtPaid && !pay.paid) return pay.daysLate ? 'late' : 'unpaid';
+  if (pay.paid || (pay.amtPaid >= u.rent)) return 'paid';
+  if (pay.amtPaid > 0) return 'partial';
+  return 'unpaid';
+}
+
+function statusBadge(status, pay) {
+  const map = {
+    paid:    '<span class="badge badge-paid">✓ Paid</span>',
+    late:    `<span class="badge badge-late">⚠ Late ${pay.daysLate||0}d</span>`,
+    unpaid:  '<span class="badge badge-unpaid">✗ Unpaid</span>',
+    partial: '<span class="badge badge-partial">Partial</span>',
+    vacant:  '<span class="badge badge-vacant">Vacant</span>',
+  };
+  return map[status] || '';
+}
+
+function buildActions(u, status) {
+  if (u.vacant) return `<button class="btn btn-xs btn-ghost">List unit</button>`;
+  if (status==='paid') return `<button class="btn btn-xs btn-ghost" onclick="openReceipt('${u.id}')">Receipt</button>`;
+  const logBtn = `<button class="btn btn-xs btn-ghost" onclick="openLogPayment('${u.id}')">Log payment</button>`;
+  const feeBtn = `<button class="btn btn-xs btn-danger" onclick="openFeeCalc('${u.id}')">Calc fee</button>`;
+  if (status==='late'||status==='unpaid') return logBtn+' '+feeBtn;
+  if (status==='partial') return logBtn+' '+feeBtn;
+  return logBtn;
+}
+
+function updateKPIs(filtered, payments) {
+  const occupied = filtered.filter(u=>!u.vacant);
+  const exp = occupied.reduce((s,u)=>s+u.rent,0);
+  const col = filtered.reduce((s,u)=>s+(payments[u.id]?.amtPaid||0),0);
+  const out = exp - col;
+  const lateCount = filtered.filter(u=>{const st=getStatus(u,payments[u.id]||{});return st==='late'||st==='unpaid'||st==='partial';}).length;
+  const occ = filtered.length ? Math.round((filtered.filter(u=>!u.vacant).length/filtered.length)*100) : 0;
+
+  document.getElementById('kpi-exp').textContent = fmtC(exp);
+  document.getElementById('kpi-exp-sub').textContent = `${occupied.length} occupied unit${occupied.length!==1?'s':''}`;
+  document.getElementById('kpi-col').textContent = fmtC(col);
+  document.getElementById('kpi-col-pct').textContent = exp>0?Math.round(col/exp*100)+'% of expected':'—';
+  document.getElementById('kpi-out').textContent = out>0?fmtC(out):'$0';
+  document.getElementById('kpi-out-units').textContent = lateCount ? `${lateCount} unit${lateCount!==1?'s':''} pending` : 'All caught up';
+  document.getElementById('kpi-occ').textContent = occ+'%';
+  document.getElementById('kpi-occ-sub').textContent = `${filtered.filter(u=>!u.vacant).length} of ${filtered.length} occupied`;
+
+  const occCard = document.getElementById('kpi-grid').children[3];
+  occCard.className = occ>=85?'kpi-card kpi-green':occ<70?'kpi-card kpi-red':'kpi-card';
+
+  const ftRent = occupied.reduce((s,u)=>s+u.rent,0);
+  document.getElementById('ft-rent').textContent = fmtC(ftRent);
+  document.getElementById('ft-paid').textContent = fmtC(col);
+  const ftBal = col - ftRent;
+  const ftEl = document.getElementById('ft-bal');
+  ftEl.textContent = ftBal===0?'—':ftBal>0?'+'+fmtC(ftBal):'–'+fmtC(Math.abs(ftBal));
+  ftEl.style.color = ftBal<0?'var(--red)':ftBal>0?'var(--green)':'';
+}
+
+/* ── LOG PAYMENT MODAL ── */
+function openLogPayment(uid) {
+  const units = lk.get('units')||[];
+  const u = units.find(x=>x.id===uid);
+  if (!u) return;
+  showModal(`
+    <div class="modal-header">
+      <h3>Log payment — Unit ${u.unit}</h3>
+      <button class="modal-close" data-cancel>×</button>
+    </div>
+    <p style="font-size:13px;color:var(--txt3);margin-bottom:16px;">${u.tenant} · ${u.propLabel} · Rent: ${fmtC(u.rent)}</p>
+    <div class="form-group"><label>Amount paid ($)</label><input type="number" id="mp-amt" value="${u.rent}" style="width:100%;"></div>
+    <div class="form-group"><label>Payment date</label><input type="text" id="mp-date" value="${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'})}" style="width:100%;"></div>
+    <div class="form-group"><label>Payment method</label>
+      <select id="mp-method" style="width:100%;"><option>Bank transfer</option><option>Check</option><option>Cash</option><option>Zelle</option><option>Venmo</option><option>PayPal</option></select>
+    </div>
+    <div class="form-group"><label>Notes (optional)</label><input type="text" id="mp-note" placeholder="Reference number, notes..." style="width:100%;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-cancel>Cancel</button>
+      <button class="btn btn-primary" data-confirm>Save payment</button>
+    </div>`, () => {
+    const amt = parseFloat(document.getElementById('mp-amt').value)||0;
+    const date = document.getElementById('mp-date').value;
+    const payKey = `payments_${currentMonth+1}_${currentYear}`;
+    const payments = lk.get(payKey)||{};
+    payments[uid] = { ...payments[uid], amtPaid:amt, paidDate:date, paid:amt>=u.rent };
+    lk.set(payKey, payments);
+    renderTable();
+    toast('Payment recorded for Unit '+u.unit);
+  });
+}
+
+/* ── ADD UNIT MODAL ── */
+function openAddUnit() {
+  showModal(`
+    <div class="modal-header">
+      <h3>Add rental unit</h3>
+      <button class="modal-close" data-cancel>×</button>
+    </div>
+    <div class="grid-2" style="gap:12px;">
+      <div class="form-group"><label>Unit number</label><input type="text" id="au-unit" placeholder="101" style="width:100%;"></div>
+      <div class="form-group"><label>Monthly rent ($)</label><input type="number" id="au-rent" placeholder="1200" style="width:100%;"></div>
+    </div>
+    <div class="form-group"><label>Property address</label><input type="text" id="au-addr" placeholder="123 Oak Street" style="width:100%;"></div>
+    <div class="form-group"><label>Property key (short code)</label><input type="text" id="au-prop" placeholder="oak" style="width:100%;"><p class="form-hint">Lowercase, no spaces. E.g. oak, elm, pine1</p></div>
+    <div class="form-group"><label>Tenant name</label><input type="text" id="au-tenant" placeholder="Leave blank if vacant" style="width:100%;"></div>
+    <div class="form-group"><label>Rent due day</label>
+      <select id="au-due" style="width:100%;"><option value="1">1st of month</option><option value="15">15th of month</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-cancel>Cancel</button>
+      <button class="btn btn-primary" data-confirm>Add unit</button>
+    </div>`, () => {
+    const tenant = document.getElementById('au-tenant').value.trim();
+    const initials = tenant.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const colors = ['#dbeafe','#d1fae5','#ede9fe','#fef3c7','#fee2e2','#fce7f3'];
+    const newUnit = {
+      id: 'u'+Date.now(),
+      unit: document.getElementById('au-unit').value||'—',
+      prop: document.getElementById('au-prop').value||'prop',
+      propLabel: document.getElementById('au-addr').value||'Property',
+      tenant, initials,
+      avatarColor: colors[Math.floor(Math.random()*colors.length)],
+      rent: parseFloat(document.getElementById('au-rent').value)||0,
+      dueDay: parseInt(document.getElementById('au-due').value)||1,
+      vacant: !tenant,
+    };
+    const units = lk.get('units')||[];
+    units.push(newUnit);
+    lk.set('units', units);
+    renderPropTabs();
+    renderTable();
+    toast('Unit '+newUnit.unit+' added');
+  });
+}
+
+/* ── FEE CALCULATOR ── */
+const FEE_RULES = {
+  CA:{name:'California',rate:.06,grace:3,flat:0},
+  TX:{name:'Texas',rate:.12,grace:2,flat:0},
+  FL:{name:'Florida',rate:.05,grace:0,flat:0},
+  NY:{name:'New York',rate:.03,grace:5,flat:0},
+  AZ:{name:'Arizona',rate:.05,grace:5,flat:5},
+  WA:{name:'Washington',rate:.10,grace:0,flat:0},
+};
+
+function openFeeCalc(uid) {
+  const units = lk.get('units')||[];
+  const u = units.find(x=>x.id===uid);
+  const payKey = `payments_${currentMonth+1}_${currentYear}`;
+  const pay = (lk.get(payKey)||{})[uid]||{};
+  document.getElementById('fee-tenant').textContent = `Unit ${u.unit} — ${u.tenant}`;
+  document.getElementById('fc-rent').value = u.rent;
+  document.getElementById('fc-days').value = pay.daysLate || 8;
+  document.getElementById('fee-panel').classList.remove('hidden');
+  calcFee();
+  document.getElementById('fee-panel').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function calcFee() {
+  const rent = parseFloat(document.getElementById('fc-rent').value)||0;
+  const days = parseInt(document.getElementById('fc-days').value)||0;
+  const rule = FEE_RULES[document.getElementById('fc-state').value];
+  if (days<=rule.grace) {
+    document.getElementById('fc-result').textContent = '$0.00';
+    document.getElementById('fc-note').textContent = `${rule.name}: Within ${rule.grace}-day grace period. Fee starts day ${rule.grace+1}.`;
+    return;
+  }
+  const fee = rule.flat+(rent*rule.rate);
+  document.getElementById('fc-result').textContent = '$'+fee.toFixed(2);
+  document.getElementById('fc-note').textContent = `${rule.name}: Grace period passed. ${rule.flat?'$'+rule.flat+' flat + ':''}${(rule.rate*100).toFixed(0)}% of $${rent.toLocaleString()} = $${fee.toFixed(2)}.`;
+}
+
+function copyFee() {
+  const fee = document.getElementById('fc-result').textContent;
+  const tenant = document.getElementById('fee-tenant').textContent;
+  toast(`Late fee ${fee} for ${tenant} — add to payment log`, 'info');
+}
+
+function openReceipt(uid) {
+  const units = lk.get('units')||[];
+  const u = units.find(x=>x.id===uid);
+  const payKey = `payments_${currentMonth+1}_${currentYear}`;
+  const pay = (lk.get(payKey)||{})[uid]||{};
+  showModal(`
+    <div class="modal-header"><h3>Rent receipt</h3><button class="modal-close" data-cancel>×</button></div>
+    <div style="background:var(--bg);border-radius:var(--r-lg);padding:20px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+        <strong style="font-family:var(--font-d);font-size:18px;color:var(--blue);">LandlordKit</strong>
+        <span style="font-size:13px;color:var(--txt3);">RENT RECEIPT</span>
+      </div>
+      <table style="width:100%;font-size:14px;"><tbody>
+        <tr><td style="color:var(--txt3);padding:4px 0;">Tenant</td><td style="text-align:right;font-weight:500;">${u.tenant}</td></tr>
+        <tr><td style="color:var(--txt3);padding:4px 0;">Property</td><td style="text-align:right;">${u.propLabel} — Unit ${u.unit}</td></tr>
+        <tr><td style="color:var(--txt3);padding:4px 0;">Period</td><td style="text-align:right;">${MONTHS[currentMonth]} ${currentYear}</td></tr>
+        <tr><td style="color:var(--txt3);padding:4px 0;">Date paid</td><td style="text-align:right;">${pay.paidDate||'—'}</td></tr>
+        <tr><td style="color:var(--txt3);padding:4px 0;border-top:1px solid var(--border);padding-top:10px;"><strong>Amount received</strong></td><td style="text-align:right;font-weight:700;font-size:18px;color:var(--green);border-top:1px solid var(--border);padding-top:10px;">${fmtC(pay.amtPaid||0)}</td></tr>
+      </tbody></table>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-cancel>Close</button>
+      <button class="btn btn-primary" onclick="window.print()">Print receipt</button>
+    </div>`);
+}
+</script>
+</body>
+</html>

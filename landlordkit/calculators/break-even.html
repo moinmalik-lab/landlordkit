@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Break-Even Rent Calculator — LandlordKit</title>
+<meta name="description" content="Find the minimum rent to cover all your property costs — mortgage, taxes, insurance, maintenance, vacancy, and management fees.">
+<link rel="stylesheet" href="../assets/css/main.css">
+<style>
+.be-layout { display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start; }
+.input-section { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:24px; }
+.input-section-title { font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border); }
+.result-col { display:flex;flex-direction:column;gap:16px; }
+.result-hero { background:var(--blue-bg);border:2px solid var(--blue-bd);border-radius:var(--r-xl);padding:24px;text-align:center; }
+.result-hero.good { background:var(--green-bg);border-color:var(--green-bd); }
+.result-hero.bad  { background:var(--red-bg);border-color:var(--red-bd); }
+.rh-label { font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--blue);margin-bottom:6px; }
+.result-hero.good .rh-label { color:var(--green); }
+.result-hero.bad  .rh-label { color:var(--red); }
+.rh-val { font-family:var(--font-d);font-size:48px;font-weight:700;color:var(--blue);line-height:1;margin-bottom:6px; }
+.result-hero.good .rh-val { color:var(--green); }
+.result-hero.bad  .rh-val { color:var(--red); }
+.rh-sub { font-size:14px;color:var(--txt2); }
+.cf-summary { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:20px; }
+.cf-summary h4 { margin-bottom:14px;font-size:14px;color:var(--txt2); }
+.cf-rows { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.cf-row { background:var(--bg);border-radius:var(--r);padding:10px 12px; }
+.cf-row-label { font-size:11px;color:var(--txt3);margin-bottom:3px;font-weight:500;text-transform:uppercase;letter-spacing:.04em; }
+.cf-row-val { font-family:var(--font-d);font-size:18px;font-weight:600;color:var(--txt); }
+.cf-row.pos .cf-row-val { color:var(--green); }
+.cf-row.neg .cf-row-val { color:var(--red); }
+.cf-row.neutral .cf-row-val { color:var(--blue); }
+.bd-section { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:20px; }
+.sens-section { background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:20px;margin-top:20px; }
+.proposed-row { display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg);border-radius:var(--r-lg);margin-bottom:16px;flex-wrap:wrap; }
+.proposed-label { font-size:13px;color:var(--txt2);flex-shrink:0; }
+.proposed-row input[type=range] { flex:1;min-width:140px; }
+.proposed-val { font-family:var(--font-d);font-size:20px;font-weight:700;color:var(--txt);min-width:72px;text-align:right; }
+.gap-pill { display:inline-block;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600; }
+.gap-pos  { background:var(--green-bg);color:var(--green); }
+.gap-neg  { background:var(--red-bg);color:var(--red); }
+.gap-zero { background:var(--blue-bg);color:var(--blue); }
+@media(max-width:900px) { .be-layout { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div id="nav-root"></div>
+
+<div class="app-layout">
+  <aside class="sidebar"><div id="sidebar-root"></div></aside>
+  <main class="main-content">
+
+    <div class="page-header" style="margin:-32px -32px 24px;padding:20px 32px;">
+      <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> › <a href="#">Calculators</a> › Break-even rent</div>
+      <h1 style="font-size:1.6rem;margin-top:6px;">Break-even rent calculator</h1>
+      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Find the minimum monthly rent to cover all property costs — accounting for vacancy and management.</p>
+    </div>
+
+    <div class="be-layout">
+
+      <!-- INPUTS -->
+      <div>
+        <div class="input-section" style="margin-bottom:16px;">
+          <div class="input-section-title">🔒 Fixed monthly costs</div>
+          <div class="grid-2" style="gap:10px;">
+            <div class="form-group"><label>Mortgage P&I<span class="form-hint">Principal + interest</span></label><div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="mortgage" value="1200" min="0" oninput="calc()"></div></div>
+            <div class="form-group"><label>Property tax<span class="form-hint">Annual ÷ 12</span></label><div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="prop-tax" value="250" min="0" oninput="calc()"></div></div>
+            <div class="form-group"><label>Insurance<span class="form-hint">Landlord policy</span></label><div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="insurance" value="100" min="0" oninput="calc()"></div></div>
+            <div class="form-group"><label>HOA fees<span class="form-hint">0 if none</span></label><div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="hoa" value="0" min="0" oninput="calc()"></div></div>
+          </div>
+        </div>
+
+        <div class="input-section" style="margin-bottom:16px;">
+          <div class="input-section-title">🔧 Reserve costs</div>
+          <div class="grid-2" style="gap:10px;">
+            <div class="form-group"><label>Maintenance reserve<span class="form-hint">Aim: 1% value/yr</span></label><div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="maintenance" value="150" min="0" oninput="calc()"></div></div>
+            <div class="form-group"><label>CapEx reserve<span class="form-hint">Roof, HVAC, etc.</span></label><div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="capex" value="100" min="0" oninput="calc()"></div></div>
+            <div class="form-group"><label>Utilities (landlord)<span class="form-hint">Water, trash if incl.</span></label><div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="utilities" value="0" min="0" oninput="calc()"></div></div>
+            <div class="form-group"><label>Other expenses<span class="form-hint">Accounting, ads</span></label><div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="other" value="50" min="0" oninput="calc()"></div></div>
+          </div>
+        </div>
+
+        <div class="input-section" style="margin-bottom:16px;">
+          <div class="input-section-title">📊 Percentage assumptions</div>
+          <div class="grid-2" style="gap:10px;">
+            <div class="form-group"><label>Vacancy rate<span class="form-hint">5–10% US average</span></label><div class="input-wrap has-suf"><input type="number" id="vacancy" value="8" min="0" max="50" oninput="calc()"><span class="input-suf">%</span></div></div>
+            <div class="form-group"><label>Property management<span class="form-hint">0 = self-managed</span></label><div class="input-wrap has-suf"><input type="number" id="mgmt" value="0" min="0" max="20" oninput="calc()"><span class="input-suf">%</span></div></div>
+          </div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-section-title">🏠 Your rent target</div>
+          <div class="form-group"><label>Proposed monthly rent<span class="form-hint">What you plan to charge</span></label><div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="proposed" value="2200" min="0" oninput="syncInput()"></div></div>
+          <div class="form-group"><label>Target monthly cash flow<span class="form-hint">0 = pure break-even</span></label><div class="input-wrap has-pre"><span class="input-pre">$</span><input type="number" id="target-cf" value="0" min="0" oninput="calc()"></div></div>
+        </div>
+      </div>
+
+      <!-- RESULTS -->
+      <div class="result-col">
+        <div class="result-hero" id="hero-card">
+          <div class="rh-label">Break-even rent</div>
+          <div class="rh-val" id="h-be">$2,174</div>
+          <div class="rh-sub" id="h-be-sub">Minimum to cover all costs</div>
+        </div>
+
+        <!-- Proposed slider -->
+        <div class="cf-summary">
+          <h4>Your proposed rent vs break-even</h4>
+          <div class="proposed-row">
+            <span class="proposed-label">Rent:</span>
+            <input type="range" id="prop-slider" min="500" max="4000" step="25" value="2200" oninput="syncSlider(this.value)">
+            <span class="proposed-val" id="prop-display">$2,200</span>
+            <span class="gap-pill gap-pos" id="gap-pill">+$44/mo</span>
+          </div>
+          <div class="cf-rows">
+            <div class="cf-row"><div class="cf-row-label">Gross rent</div><div class="cf-row-val" id="cfr-gross">$2,200</div></div>
+            <div class="cf-row"><div class="cf-row-label">After vacancy</div><div class="cf-row-val" id="cfr-eff">$2,024</div></div>
+            <div class="cf-row"><div class="cf-row-label">Total costs</div><div class="cf-row-val" id="cfr-costs">$1,980</div></div>
+            <div class="cf-row" id="cfr-net-card"><div class="cf-row-label">Monthly cash flow</div><div class="cf-row-val" id="cfr-net">+$44</div></div>
+          </div>
+        </div>
+
+        <!-- Cost breakdown -->
+        <div class="bd-section">
+          <h4 style="margin-bottom:14px;font-size:14px;color:var(--txt2);">Cost breakdown at break-even</h4>
+          <div id="bd-rows"></div>
+          <div class="bd-row" style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px;">
+            <span class="bd-label" style="font-weight:600;color:var(--txt);">Total fixed</span>
+            <div class="bd-track"></div>
+            <span class="bd-amount font-mono" id="bd-total-fixed" style="font-weight:600;">$1,850</span>
+          </div>
+          <div class="bd-row">
+            <span class="bd-label" style="font-weight:600;color:var(--blue);">Break-even rent</span>
+            <div class="bd-track"></div>
+            <span class="bd-amount font-mono" id="bd-total-be" style="font-weight:600;color:var(--blue);">$2,174</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sensitivity table -->
+    <div class="sens-section">
+      <h4 style="margin-bottom:14px;font-size:14px;color:var(--txt2);">Sensitivity — monthly cash flow at different rent levels</h4>
+      <div class="table-wrap">
+        <table class="sens-table">
+          <thead><tr><th>Monthly rent</th><th>Effective income</th><th>Monthly cash flow</th><th>Annual cash flow</th><th>Verdict</th></tr></thead>
+          <tbody id="sens-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;background:var(--bg);">
+      <h4 style="margin-bottom:8px;">How this calculator works</h4>
+      <p style="font-size:14px;line-height:1.7;">The break-even rent accounts for the fact that your unit won't be occupied 100% of the time. If your vacancy rate is 8%, you're empty roughly 1 month per year — so you need to charge enough rent during the occupied months to cover all 12 months of costs.</p>
+      <p style="font-size:14px;line-height:1.7;margin-top:8px;"><strong>Formula:</strong> Break-even rent = Total monthly costs ÷ (1 − vacancy rate) ÷ (1 − management rate). Always set rent above this number to ensure positive cash flow.</p>
+    </div>
+
+  </main>
+</div>
+
+<script src="../assets/js/nav.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{ buildSidebar('calculators'); calc(); });
+
+const COLORS = ['#2563eb','#059669','#d97706','#7c3aed','#dc2626','#0891b2','#65a30d'];
+const BD_IDS    = ['mortgage','prop-tax','insurance','hoa','maintenance','capex','utilities','other'];
+const BD_LABELS = ['Mortgage P&I','Property tax','Insurance','HOA fees','Maintenance','CapEx reserve','Utilities','Other'];
+
+function gv(id){ return parseFloat(document.getElementById(id)?.value)||0; }
+function fmtD(n){ return '$'+Math.round(Math.abs(n)).toLocaleString(); }
+function fmtCF(n){ if(Math.abs(n)<1) return '±$0'; return (n>=0?'+$':'–$')+Math.abs(Math.round(n)).toLocaleString(); }
+
+function calc(){
+  const vac  = gv('vacancy')/100;
+  const mgm  = gv('mgmt')/100;
+  const tcf  = gv('target-cf');
+  const prop = gv('proposed');
+  const fixed = BD_IDS.reduce((s,id)=>s+gv(id),0);
+  const denom = (1-vac)*(1-mgm);
+  const be = denom>0 ? (fixed+tcf)/denom : 0;
+
+  // Proposed cash flow
+  const effProp  = prop*(1-vac);
+  const mgmtFee  = effProp*mgm;
+  const netProp  = effProp - mgmtFee;
+  const cfProp   = netProp - fixed;
+  const annProp  = cfProp*12;
+
+  document.getElementById('h-be').textContent = fmtD(be);
+  document.getElementById('h-be-sub').textContent = tcf>0 ? `Covers costs + ${fmtD(tcf)}/mo target` : 'Minimum to cover all costs';
+  const hero = document.getElementById('hero-card');
+  hero.className = 'result-hero'+(cfProp>1?' good':cfProp<-1?' bad':'');
+
+  document.getElementById('prop-display').textContent = fmtD(prop);
+  document.getElementById('prop-slider').value = prop;
+
+  const gap = prop-be;
+  const gapEl = document.getElementById('gap-pill');
+  gapEl.textContent = fmtCF(cfProp)+'/mo';
+  gapEl.className = 'gap-pill '+(gap>0.5?'gap-pos':gap<-0.5?'gap-neg':'gap-zero');
+
+  document.getElementById('cfr-gross').textContent = fmtD(prop);
+  document.getElementById('cfr-eff').textContent = fmtD(effProp);
+  document.getElementById('cfr-costs').textContent = fmtD(fixed+(mgm>0?mgmtFee:0));
+  document.getElementById('cfr-net').textContent = fmtCF(cfProp);
+  const netCard = document.getElementById('cfr-net-card');
+  netCard.className = 'cf-row'+(cfProp>0?' pos':cfProp<0?' neg':' neutral');
+
+  // Breakdown bars
+  const beEff  = be*(1-vac);
+  const beMgmt = beEff*mgm;
+  const beVac  = be*vac;
+  const maxCost = Math.max(fixed, 1);
+  const bdRows  = document.getElementById('bd-rows');
+  let bdHtml = '';
+  BD_IDS.forEach((id,i)=>{
+    const amt = gv(id);
+    if(!amt) return;
+    const pct = Math.min(100,(amt/maxCost)*100);
+    bdHtml += `<div class="bd-row"><span class="bd-label">${BD_LABELS[i]}</span><div class="bd-track"><div class="bd-fill" style="width:${pct.toFixed(1)}%;background:${COLORS[i]};"></div></div><span class="bd-amount font-mono">${fmtD(amt)}</span></div>`;
+  });
+  if(mgm>0){
+    const p2=Math.min(100,(beMgmt/maxCost)*100);
+    bdHtml+=`<div class="bd-row"><span class="bd-label">Mgmt fee (est.)</span><div class="bd-track"><div class="bd-fill" style="width:${p2.toFixed(1)}%;background:#a8a29e;"></div></div><span class="bd-amount font-mono">${fmtD(beMgmt)}</span></div>`;
+  }
+  const vp=Math.min(100,(beVac/maxCost)*100);
+  bdHtml+=`<div class="bd-row"><span class="bd-label" style="color:var(--txt3)">Vacancy allowance</span><div class="bd-track"><div class="bd-fill" style="width:${vp.toFixed(1)}%;background:#d4d0ca;"></div></div><span class="bd-amount font-mono" style="color:var(--txt3)">${fmtD(beVac)}</span></div>`;
+  bdRows.innerHTML = bdHtml;
+  document.getElementById('bd-total-fixed').textContent = fmtD(fixed);
+  document.getElementById('bd-total-be').textContent = fmtD(be);
+
+  buildSensitivity(be, prop, fixed, vac, mgm);
+}
+
+function buildSensitivity(be, proposed, fixed, vac, mgm){
+  const beR = Math.round(be/25)*25;
+  const step = proposed<=1500?50:proposed<=2500?75:100;
+  const rows=new Set();
+  for(let r=beR-step*4;r<=beR+step*5;r+=step) if(r>=300) rows.add(Math.round(r/25)*25);
+  const propR=Math.round(proposed/25)*25;
+  if(propR>=300) rows.add(propR);
+  const sorted=[...rows].sort((a,b)=>a-b);
+  document.getElementById('sens-body').innerHTML=sorted.map(r=>{
+    const eff=r*(1-vac);
+    const mgmtFee=eff*mgm;
+    const cf=eff-mgmtFee-fixed;
+    const ann=cf*12;
+    const isBe=Math.abs(r-beR)<13;
+    const isProp=r===propR&&!isBe;
+    let cls='',verdict='';
+    if(isBe){cls='sens-be';verdict='↔ Break-even';}
+    else if(isProp&&cf>0){cls='sens-pos';verdict='✓ Your rent — positive';}
+    else if(isProp&&cf<=0){cls='sens-neg';verdict='✗ Your rent — below break-even';}
+    else if(cf>=0){cls='sens-pos';verdict='✓ Positive cash flow';}
+    else{cls='sens-neg';verdict='✗ Below break-even';}
+    return`<tr class="${cls}"><td><strong>$${r.toLocaleString()}</strong></td><td>$${Math.round(eff).toLocaleString()}</td><td>${fmtCF(cf)}</td><td>${fmtCF(ann)}</td><td>${verdict}</td></tr>`;
+  }).join('');
+}
+
+function syncSlider(val){
+  document.getElementById('proposed').value=val;
+  calc();
+}
+function syncInput(){
+  const val=gv('proposed');
+  document.getElementById('prop-slider').value=Math.min(4000,Math.max(500,val));
+  calc();
+}
+</script>
+</body>
+</html>
