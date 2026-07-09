@@ -3,31 +3,320 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Expense log — LandlordKit</title>
+<title>Expense Log - LandlordKit</title>
 <link rel="stylesheet" href="../assets/css/main.css">
+<style>
+.exp-layout{display:grid;grid-template-columns:1fr 280px;gap:20px;align-items:start;}
+.cat-summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:18px;}
+.cat-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.cat-row:last-child{border-bottom:none;font-weight:600;}
+.cat-name{color:var(--txt2);}
+.cat-amt{font-family:var(--font-m);color:var(--txt);font-weight:500;}
+.exp-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex-shrink:0;}
+@media(max-width:768px){.exp-layout{grid-template-columns:1fr;}}
+</style>
 </head>
 <body>
 <div id="nav-root"></div>
 <div class="app-layout">
   <aside class="sidebar"><div id="sidebar-root"></div></aside>
   <main class="main-content">
+
     <div class="page-header" style="margin:-32px -32px 24px;padding:20px 32px;">
       <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> &rsaquo; Expenses</div>
-      <h1 style="font-size:1.6rem;margin-top:6px;">Expense log</h1>
-      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Log every property expense against the right IRS Schedule E category.</p>
-    </div>
-    <div class="card" style="text-align:center;padding:60px 40px;">
-      <div style="font-size:48px;margin-bottom:16px;">📋</div>
-      <h2 style="margin-bottom:12px;">Expense log</h2>
-      <p style="max-width:440px;margin:0 auto 24px;font-size:15px;">Log every property expense against the right IRS Schedule E category. This page is in active development — full functionality coming in Phase 2.</p>
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-        <a href="../income/rent-roll.html" class="btn btn-primary">Open rent roll &rarr;</a>
-        <a href="../calculators/break-even.html" class="btn btn-ghost">Break-even calculator</a>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:8px;">
+        <h1 style="font-size:1.6rem;margin:0;">Expense Log</h1>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select id="filter-month" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;" onchange="renderAll()"></select>
+          <select id="filter-prop" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;" onchange="renderAll()"></select>
+          <button class="btn btn-ghost btn-sm" onclick="window.print()">Print</button>
+          <button class="btn btn-primary btn-sm" onclick="openAddExpense()">+ Add Expense</button>
+        </div>
       </div>
     </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" style="margin-bottom:20px;">
+      <div class="kpi-card kpi-red"><div class="kpi-label">Total This Month</div><div class="kpi-value" id="kpi-total">$0</div><div class="kpi-sub" id="kpi-total-sub">all properties</div></div>
+      <div class="kpi-card"><div class="kpi-label">Largest Category</div><div class="kpi-value" id="kpi-top-cat" style="font-size:16px;margin-top:4px;">-</div><div class="kpi-sub" id="kpi-top-amt">-</div></div>
+      <div class="kpi-card"><div class="kpi-label">No. of Expenses</div><div class="kpi-value" id="kpi-count">0</div><div class="kpi-sub">this period</div></div>
+      <div class="kpi-card"><div class="kpi-label">YTD Total</div><div class="kpi-value" id="kpi-ytd">$0</div><div class="kpi-sub" id="kpi-ytd-sub">all categories</div></div>
+    </div>
+
+    <div class="exp-layout">
+      <div>
+        <!-- Table -->
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th><th>Description</th><th>Category</th>
+                <th>Property / Unit</th><th>Payee</th><th>Amount</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="exp-body">
+              <tr><td colspan="7"><div class="empty-state"><h3>No expenses recorded yet</h3><p>Add your first expense to get started.</p><button class="btn btn-primary btn-sm" onclick="openAddExpense()">+ Add Expense</button></div></td></tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="5" style="font-weight:600;">Total</td>
+                <td id="ft-total" style="font-weight:600;font-family:var(--font-m);">$0</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Category Summary -->
+      <div class="cat-summary">
+        <h4 style="font-size:13px;font-weight:600;color:var(--txt2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.04em;">By Schedule E Category</h4>
+        <div id="cat-summary-rows">
+          <div style="text-align:center;padding:20px;color:var(--txt3);font-size:13px;">No expenses yet</div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
+
 <script src="../assets/js/nav.js"></script>
-<script>document.addEventListener('DOMContentLoaded',()=>{ buildSidebar('expenses'); });</script>
+<script>
+var CATS = [
+  {key:'advertising',        label:'Advertising',               color:'#2563eb'},
+  {key:'auto_travel',        label:'Auto and Travel',           color:'#7c3aed'},
+  {key:'cleaning',           label:'Cleaning and Maintenance',  color:'#059669'},
+  {key:'insurance',          label:'Insurance',                 color:'#0891b2'},
+  {key:'legal',              label:'Legal and Professional',    color:'#c026d3'},
+  {key:'management',         label:'Management Fees',           color:'#9333ea'},
+  {key:'mortgage_interest',  label:'Mortgage Interest',         color:'#dc2626'},
+  {key:'other_interest',     label:'Other Interest',            color:'#ea580c'},
+  {key:'repairs',            label:'Repairs',                   color:'#d97706'},
+  {key:'supplies',           label:'Supplies',                  color:'#65a30d'},
+  {key:'taxes_property',     label:'Taxes (Property)',          color:'#0369a1'},
+  {key:'utilities',          label:'Utilities',                 color:'#0d9488'},
+  {key:'depreciation',       label:'Depreciation',              color:'#6366f1'},
+  {key:'capex',              label:'Capital Expenditure',       color:'#b45309'},
+  {key:'other',              label:'Other Expenses',            color:'#6b7280'}
+];
+
+var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var MONTHS_FULL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function getExpenses() { return lk.get('expenses') || []; }
+function fmtC(n) { return '$' + Math.abs(Math.round(n)).toLocaleString('en-US'); }
+
+function initFilters() {
+  var now = new Date();
+  var mSel = document.getElementById('filter-month');
+  var opts = '<option value="all">All Months</option>';
+  for (var i = 0; i < 12; i++) {
+    var y = now.getFullYear(), m = i;
+    var val = (m+1) + '_' + y;
+    var sel = (m === now.getMonth()) ? ' selected' : '';
+    opts += '<option value="' + val + '"' + sel + '>' + MONTHS_FULL[m] + ' ' + y + '</option>';
+  }
+  mSel.innerHTML = opts;
+
+  var pSel = document.getElementById('filter-prop');
+  var units = lk.get('units') || [];
+  var props = {all:'All Properties'};
+  units.forEach(function(u){ if(!props[u.prop]) props[u.prop]=u.propLabel; });
+  var pOpts = '';
+  Object.keys(props).forEach(function(k){ pOpts += '<option value="' + k + '">' + props[k] + '</option>'; });
+  pSel.innerHTML = pOpts;
+}
+
+function getFiltered() {
+  var exps = getExpenses();
+  var mVal = document.getElementById('filter-month').value;
+  var pVal = document.getElementById('filter-prop').value;
+  return exps.filter(function(e) {
+    var mMatch = mVal === 'all' || e.monthKey === mVal;
+    var pMatch = pVal === 'all' || e.prop === pVal;
+    return mMatch && pMatch;
+  });
+}
+
+function renderAll() {
+  var filtered = getFiltered();
+  var all = getExpenses();
+  var now = new Date();
+  var ytd = all.filter(function(e) {
+    var parts = e.monthKey ? e.monthKey.split('_') : [];
+    return parts.length === 2 && parseInt(parts[1]) === now.getFullYear();
+  });
+
+  /* KPIs */
+  var total = filtered.reduce(function(s,e){return s+e.amount;},0);
+  var ytdTotal = ytd.reduce(function(s,e){return s+e.amount;},0);
+  document.getElementById('kpi-total').textContent = fmtC(total);
+  document.getElementById('kpi-total-sub').textContent = filtered.length + ' expense' + (filtered.length!==1?'s':'');
+  document.getElementById('kpi-count').textContent = filtered.length;
+  document.getElementById('kpi-ytd').textContent = fmtC(ytdTotal);
+  document.getElementById('kpi-ytd-sub').textContent = ytd.length + ' expenses year to date';
+
+  /* Top category */
+  var catTotals = {};
+  filtered.forEach(function(e){ catTotals[e.category] = (catTotals[e.category]||0) + e.amount; });
+  var topCat = Object.keys(catTotals).sort(function(a,b){return catTotals[b]-catTotals[a];})[0];
+  if (topCat) {
+    var catObj = CATS.find(function(c){return c.key===topCat;});
+    document.getElementById('kpi-top-cat').textContent = catObj ? catObj.label : topCat;
+    document.getElementById('kpi-top-amt').textContent = fmtC(catTotals[topCat]);
+  } else {
+    document.getElementById('kpi-top-cat').textContent = '-';
+    document.getElementById('kpi-top-amt').textContent = '-';
+  }
+
+  /* Table */
+  if (!filtered.length) {
+    document.getElementById('exp-body').innerHTML = '<tr><td colspan="7"><div class="empty-state"><h3>No expenses for this period</h3><p>Change the filter or add a new expense.</p></div></td></tr>';
+    document.getElementById('ft-total').textContent = '$0';
+  } else {
+    var sorted = filtered.slice().sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+    var html = '';
+    sorted.forEach(function(e) {
+      var cat = CATS.find(function(c){return c.key===e.category;});
+      var catLabel = cat ? cat.label : e.category;
+      var catColor = cat ? cat.color : '#6b7280';
+      html += '<tr>'
+        + '<td style="color:var(--txt2);white-space:nowrap;">' + e.date + '</td>'
+        + '<td><span style="font-weight:500;">' + e.description + '</span>' + (e.notes?'<span class="prop-tag">'+e.notes+'</span>':'') + '</td>'
+        + '<td><span class="exp-dot" style="background:' + catColor + '"></span>' + catLabel + '</td>'
+        + '<td>' + (e.propLabel||'-') + (e.unit?'<span class="prop-tag">Unit '+e.unit+'</span>':'') + '</td>'
+        + '<td style="color:var(--txt2);">' + (e.payee||'-') + '</td>'
+        + '<td class="font-mono" style="font-weight:600;color:var(--red);">' + fmtC(e.amount) + '</td>'
+        + '<td><button class="btn btn-xs btn-ghost" onclick="editExpense(\'' + e.id + '\')">Edit</button>'
+        + ' <button class="btn btn-xs btn-danger" onclick="deleteExpense(\'' + e.id + '\')">Del</button></td>'
+        + '</tr>';
+    });
+    document.getElementById('exp-body').innerHTML = html;
+    document.getElementById('ft-total').textContent = fmtC(total);
+  }
+
+  /* Category summary */
+  var catHtml = '';
+  var sortedCats = CATS.filter(function(c){return catTotals[c.key];}).sort(function(a,b){return catTotals[b.key]-catTotals[a.key];});
+  if (!sortedCats.length) {
+    catHtml = '<div style="text-align:center;padding:20px;color:var(--txt3);font-size:13px;">No expenses yet</div>';
+  } else {
+    sortedCats.forEach(function(c) {
+      catHtml += '<div class="cat-row"><span><span class="exp-dot" style="background:' + c.color + '"></span><span class="cat-name">' + c.label + '</span></span><span class="cat-amt">' + fmtC(catTotals[c.key]) + '</span></div>';
+    });
+    catHtml += '<div class="cat-row" style="margin-top:6px;"><span style="font-weight:600;color:var(--txt);">Total</span><span class="cat-amt" style="color:var(--red);font-weight:700;">' + fmtC(total) + '</span></div>';
+  }
+  document.getElementById('cat-summary-rows').innerHTML = catHtml;
+}
+
+function catOptions(selected) {
+  return CATS.map(function(c){
+    return '<option value="' + c.key + '"' + (c.key===selected?' selected':'') + '>' + c.label + '</option>';
+  }).join('');
+}
+
+function propOptions() {
+  var units = lk.get('units') || [];
+  var props = {};
+  units.forEach(function(u){ props[u.prop] = {label:u.propLabel, units:[]}; });
+  units.forEach(function(u){ if(props[u.prop]) props[u.prop].units.push(u.unit); });
+  var html = '<option value="">-- Select property --</option>';
+  Object.keys(props).forEach(function(k){
+    html += '<option value="' + k + '" data-label="' + props[k].label + '">' + props[k].label + '</option>';
+  });
+  return html;
+}
+
+function openAddExpense(expId) {
+  var exps = getExpenses();
+  var existing = expId ? exps.find(function(e){return e.id===expId;}) : null;
+  var today = new Date().toISOString().split('T')[0];
+  var now = new Date();
+  var defMonthKey = (now.getMonth()+1) + '_' + now.getFullYear();
+
+  showModal(expId ? 'Edit Expense' : 'Add Expense',
+    '<div class="grid-2" style="gap:12px;">'
+    + '<div class="form-group"><label>Date</label><input type="date" id="ae-date" value="' + (existing?existing.date:today) + '" style="width:100%"></div>'
+    + '<div class="form-group"><label>Amount ($)</label><input type="number" id="ae-amount" value="' + (existing?existing.amount:'') + '" placeholder="0.00" step="0.01" style="width:100%"></div>'
+    + '</div>'
+    + '<div class="form-group"><label>Description</label><input type="text" id="ae-desc" value="' + (existing?existing.description:'') + '" placeholder="e.g. Replaced water heater in Unit 102" style="width:100%"></div>'
+    + '<div class="grid-2" style="gap:12px;">'
+    + '<div class="form-group"><label>Schedule E Category</label><select id="ae-cat" style="width:100%">' + catOptions(existing?existing.category:'repairs') + '</select></div>'
+    + '<div class="form-group"><label>Property</label><select id="ae-prop" style="width:100%">' + propOptions() + '</select></div>'
+    + '</div>'
+    + '<div class="grid-2" style="gap:12px;">'
+    + '<div class="form-group"><label>Unit (optional)</label><input type="text" id="ae-unit" value="' + (existing?existing.unit:'') + '" placeholder="101" style="width:100%"></div>'
+    + '<div class="form-group"><label>Payee / Vendor</label><input type="text" id="ae-payee" value="' + (existing?existing.payee:'') + '" placeholder="Bob Plumbing" style="width:100%"></div>'
+    + '</div>'
+    + '<div class="grid-2" style="gap:12px;">'
+    + '<div class="form-group"><label>Payment Method</label><select id="ae-method" style="width:100%"><option>Check</option><option>Bank transfer</option><option>Credit card</option><option>Cash</option><option>Zelle</option></select></div>'
+    + '<div class="form-group"><label>Receipt / Ref No.</label><input type="text" id="ae-ref" value="' + (existing?existing.ref:'') + '" placeholder="#1042" style="width:100%"></div>'
+    + '</div>'
+    + '<div class="form-group"><label>Notes</label><input type="text" id="ae-notes" value="' + (existing?existing.notes:'') + '" placeholder="Additional notes..." style="width:100%"></div>',
+    function() {
+      var amount = parseFloat(document.getElementById('ae-amount').value);
+      var desc   = document.getElementById('ae-desc').value.trim();
+      var date   = document.getElementById('ae-date').value;
+      if (!amount || !desc || !date) { alert('Please fill in Date, Description and Amount.'); return false; }
+      var propEl = document.getElementById('ae-prop');
+      var propKey = propEl.value;
+      var propLabel = propEl.options[propEl.selectedIndex] ? propEl.options[propEl.selectedIndex].text : '';
+      var dParts = date.split('-');
+      var monthKey = parseInt(dParts[1]) + '_' + dParts[0];
+      var entry = {
+        id: existing ? existing.id : 'exp_' + Date.now(),
+        date: date,
+        description: desc,
+        category: document.getElementById('ae-cat').value,
+        prop: propKey,
+        propLabel: propLabel,
+        unit: document.getElementById('ae-unit').value.trim(),
+        amount: amount,
+        payee: document.getElementById('ae-payee').value.trim(),
+        method: document.getElementById('ae-method').value,
+        ref: document.getElementById('ae-ref').value.trim(),
+        notes: document.getElementById('ae-notes').value.trim(),
+        monthKey: monthKey
+      };
+      if (existing) {
+        lk.set('expenses', exps.map(function(e){ return e.id===expId ? entry : e; }));
+        toast('Expense updated');
+      } else {
+        exps.push(entry);
+        lk.set('expenses', exps);
+        toast('Expense of ' + fmtC(amount) + ' added');
+      }
+      renderAll();
+    }, expId ? 'Save Changes' : 'Add Expense');
+}
+
+function editExpense(id) { openAddExpense(id); }
+
+function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  lk.set('expenses', getExpenses().filter(function(e){return e.id!==id;}));
+  renderAll();
+  toast('Expense deleted', 'warn');
+}
+
+function seedExpenses() {
+  if (lk.get('expenses')) return;
+  var now = new Date();
+  var mk = (now.getMonth()+1) + '_' + now.getFullYear();
+  lk.set('expenses', [
+    {id:'ex1',date:now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01',description:'Monthly mortgage payment',category:'mortgage_interest',prop:'oak',propLabel:'123 Oak St',unit:'',amount:1200,payee:'First National Bank',method:'Bank transfer',ref:'',notes:'P&I portion only',monthKey:mk},
+    {id:'ex2',date:now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01',description:'Landlord insurance premium',category:'insurance',prop:'oak',propLabel:'123 Oak St',unit:'',amount:100,payee:'State Farm',method:'Bank transfer',ref:'',notes:'',monthKey:mk},
+    {id:'ex3',date:now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-05',description:'Fixed leaking faucet',category:'repairs',prop:'oak',propLabel:'123 Oak St',unit:'102',amount:185,payee:'Joe Plumbing',method:'Check',ref:'#1042',notes:'',monthKey:mk},
+    {id:'ex4',date:now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-03',description:'Property tax installment',category:'taxes_property',prop:'elm',propLabel:'456 Elm Ave',unit:'',amount:625,payee:'County Tax Office',method:'Bank transfer',ref:'',notes:'Q2 installment',monthKey:mk}
+  ]);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  buildSidebar();
+  seedExpenses();
+  initFilters();
+  renderAll();
+});
+</script>
 </body>
 </html>

@@ -3,31 +3,386 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Maintenance request form — LandlordKit</title>
+<title>Maintenance - LandlordKit</title>
 <link rel="stylesheet" href="../assets/css/main.css">
+<style>
+.maint-layout{display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start;}
+.request-form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:22px;position:sticky;top:80px;}
+.priority-badge-emergency{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;}
+.priority-badge-urgent{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);}
+.priority-badge-routine{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);}
+.status-open{background:var(--red-bg);color:var(--red);}
+.status-progress{background:var(--amber-bg);color:var(--amber);}
+.status-done{background:var(--green-bg);color:var(--green);}
+.status-cancelled{background:var(--bg);color:var(--txt3);}
+@media(max-width:900px){.maint-layout{grid-template-columns:1fr;}}
+</style>
 </head>
 <body>
 <div id="nav-root"></div>
 <div class="app-layout">
   <aside class="sidebar"><div id="sidebar-root"></div></aside>
   <main class="main-content">
+
     <div class="page-header" style="margin:-32px -32px 24px;padding:20px 32px;">
       <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> &rsaquo; Maintenance</div>
-      <h1 style="font-size:1.6rem;margin-top:6px;">Maintenance request form</h1>
-      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Printable tenant-facing form for submitting repair requests in writing.</p>
-    </div>
-    <div class="card" style="text-align:center;padding:60px 40px;">
-      <div style="font-size:48px;margin-bottom:16px;">📝</div>
-      <h2 style="margin-bottom:12px;">Maintenance request form</h2>
-      <p style="max-width:440px;margin:0 auto 24px;font-size:15px;">Printable tenant-facing form for submitting repair requests in writing. This page is in active development — full functionality coming in Phase 2.</p>
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-        <a href="../income/rent-roll.html" class="btn btn-primary">Open rent roll &rarr;</a>
-        <a href="../calculators/break-even.html" class="btn btn-ghost">Break-even calculator</a>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:8px;">
+        <h1 style="font-size:1.6rem;margin:0;">Maintenance Log</h1>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="filter-status" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;" onchange="renderRequests()">
+            <option value="all">All Status</option>
+            <option value="Open">Open</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="window.print()">Print log</button>
+        </div>
       </div>
     </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" style="margin-bottom:20px;">
+      <div class="kpi-card kpi-red"><div class="kpi-label">Open Requests</div><div class="kpi-value" id="kpi-open">0</div><div class="kpi-sub">need attention</div></div>
+      <div class="kpi-card"><div class="kpi-label">In Progress</div><div class="kpi-value" id="kpi-prog">0</div><div class="kpi-sub">with contractor</div></div>
+      <div class="kpi-card kpi-green"><div class="kpi-label">Completed</div><div class="kpi-value" id="kpi-done">0</div><div class="kpi-sub">this year</div></div>
+      <div class="kpi-card"><div class="kpi-label">Total Cost</div><div class="kpi-value" id="kpi-cost">$0</div><div class="kpi-sub">completed work</div></div>
+    </div>
+
+    <div class="maint-layout">
+
+      <!-- NEW REQUEST FORM -->
+      <div class="request-form-card">
+        <h3 style="font-size:15px;margin-bottom:16px;color:var(--txt);">New Maintenance Request</h3>
+        <div class="form-group">
+          <label>Tenant Name</label>
+          <input type="text" id="mf-tenant" placeholder="John Smith" style="width:100%">
+        </div>
+        <div class="grid-2" style="gap:10px;">
+          <div class="form-group">
+            <label>Property</label>
+            <select id="mf-prop" style="width:100%"></select>
+          </div>
+          <div class="form-group">
+            <label>Unit</label>
+            <input type="text" id="mf-unit" placeholder="101" style="width:100%">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Issue Type</label>
+          <select id="mf-type" style="width:100%">
+            <option>Plumbing</option>
+            <option>Electrical</option>
+            <option>HVAC / Heating / Cooling</option>
+            <option>Appliance</option>
+            <option>Structural / Roof</option>
+            <option>Pest control</option>
+            <option>Doors / Windows / Locks</option>
+            <option>Flooring</option>
+            <option>Painting / Walls</option>
+            <option>Exterior / Landscaping</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="mf-priority" style="width:100%">
+            <option value="Emergency">Emergency - Urgent safety issue</option>
+            <option value="Urgent" selected>Urgent - Fix within 48 hours</option>
+            <option value="Routine">Routine - Schedule within 2 weeks</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Description of Problem</label>
+          <textarea id="mf-desc" rows="3" placeholder="Describe the issue in detail..." style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;resize:vertical;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Access Notes</label>
+          <input type="text" id="mf-access" placeholder="e.g. OK to enter Mon-Fri 9am-5pm" style="width:100%">
+        </div>
+        <div class="form-group">
+          <label>Date Submitted</label>
+          <input type="date" id="mf-date" style="width:100%">
+        </div>
+        <button class="btn btn-primary w-full" onclick="submitRequest()">Submit Request</button>
+        <button class="btn btn-ghost w-full" style="margin-top:8px;" onclick="printBlankForm()">Print Blank Form</button>
+      </div>
+
+      <!-- REQUESTS TABLE -->
+      <div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th><th>Unit / Tenant</th><th>Issue Type</th>
+                <th>Description</th><th>Priority</th><th>Status</th>
+                <th>Contractor</th><th>Cost</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="maint-body"></tbody>
+            <tfoot>
+              <tr>
+                <td colspan="7" style="font-weight:600;">Total Cost (completed)</td>
+                <td id="ft-cost" style="font-weight:600;font-family:var(--font-m);">$0</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
+
 <script src="../assets/js/nav.js"></script>
-<script>document.addEventListener('DOMContentLoaded',()=>{ buildSidebar('maintenance'); });</script>
+<script>
+function getRequests() { return lk.get('maintenance') || []; }
+function fmtC(n) { return '$' + Math.abs(Math.round(n||0)).toLocaleString('en-US'); }
+
+function initPropSelect() {
+  var units = lk.get('units') || [];
+  var props = {};
+  units.forEach(function(u){ props[u.prop] = u.propLabel; });
+  var html = '<option value="">-- Select --</option>';
+  Object.keys(props).forEach(function(k){ html += '<option value="' + k + '" data-label="' + props[k] + '">' + props[k] + '</option>'; });
+  document.getElementById('mf-prop').innerHTML = html;
+}
+
+function initDateField() {
+  document.getElementById('mf-date').value = new Date().toISOString().split('T')[0];
+}
+
+function submitRequest() {
+  var tenant   = document.getElementById('mf-tenant').value.trim();
+  var propEl   = document.getElementById('mf-prop');
+  var propKey  = propEl.value;
+  var propLabel= propEl.options[propEl.selectedIndex] ? propEl.options[propEl.selectedIndex].dataset.label || propEl.options[propEl.selectedIndex].text : '';
+  var unit     = document.getElementById('mf-unit').value.trim();
+  var type     = document.getElementById('mf-type').value;
+  var priority = document.getElementById('mf-priority').value;
+  var desc     = document.getElementById('mf-desc').value.trim();
+  var access   = document.getElementById('mf-access').value.trim();
+  var date     = document.getElementById('mf-date').value;
+
+  if (!tenant || !desc || !date) { alert('Please fill in Tenant Name, Description and Date.'); return; }
+
+  var requests = getRequests();
+  requests.unshift({
+    id: 'maint_' + Date.now(),
+    date: date,
+    tenant: tenant,
+    prop: propKey,
+    propLabel: propLabel,
+    unit: unit,
+    type: type,
+    priority: priority,
+    description: desc,
+    access: access,
+    status: 'Open',
+    contractor: '',
+    estimatedCost: 0,
+    actualCost: 0,
+    completedDate: '',
+    notes: ''
+  });
+  lk.set('maintenance', requests);
+
+  /* Reset form */
+  document.getElementById('mf-tenant').value = '';
+  document.getElementById('mf-unit').value = '';
+  document.getElementById('mf-desc').value = '';
+  document.getElementById('mf-access').value = '';
+  initDateField();
+  renderRequests();
+  toast('Maintenance request submitted');
+}
+
+function renderRequests() {
+  var requests = getRequests();
+  var statusF  = document.getElementById('filter-status').value;
+  var filtered = statusF === 'all' ? requests : requests.filter(function(r){return r.status===statusF;});
+
+  /* KPIs */
+  var open     = requests.filter(function(r){return r.status==='Open';}).length;
+  var prog     = requests.filter(function(r){return r.status==='In Progress';}).length;
+  var done     = requests.filter(function(r){return r.status==='Completed';}).length;
+  var costDone = requests.filter(function(r){return r.status==='Completed';}).reduce(function(s,r){return s+(r.actualCost||0);},0);
+  document.getElementById('kpi-open').textContent = open;
+  document.getElementById('kpi-prog').textContent = prog;
+  document.getElementById('kpi-done').textContent = done;
+  document.getElementById('kpi-cost').textContent = fmtC(costDone);
+
+  if (!filtered.length) {
+    document.getElementById('maint-body').innerHTML = '<tr><td colspan="9"><div class="empty-state"><h3>No requests found</h3><p>Submit a new maintenance request using the form.</p></div></td></tr>';
+    document.getElementById('ft-cost').textContent = '$0';
+    return;
+  }
+
+  var totalCost = filtered.filter(function(r){return r.status==='Completed';}).reduce(function(s,r){return s+(r.actualCost||0);},0);
+  var html = '';
+  filtered.forEach(function(r) {
+    var priCls = 'priority-badge-' + r.priority.toLowerCase();
+    var stCls  = 'status-' + r.status.toLowerCase().replace(' ','-').replace('in-progress','progress');
+    html += '<tr>'
+      + '<td style="color:var(--txt2);white-space:nowrap;">' + r.date + '</td>'
+      + '<td><strong>' + (r.unit?'Unit '+r.unit:'') + '</strong><span class="prop-tag">' + (r.propLabel||r.tenant) + '</span><span class="prop-tag">' + r.tenant + '</span></td>'
+      + '<td>' + r.type + '</td>'
+      + '<td style="max-width:180px;"><span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + r.description + '</span></td>'
+      + '<td><span class="badge ' + priCls + '">' + r.priority + '</span></td>'
+      + '<td><span class="badge ' + stCls + '">' + r.status + '</span></td>'
+      + '<td style="color:var(--txt2);">' + (r.contractor||'-') + '</td>'
+      + '<td class="font-mono">' + (r.actualCost ? fmtC(r.actualCost) : '-') + '</td>'
+      + '<td><button class="btn btn-xs btn-ghost" onclick="openUpdateRequest(\'' + r.id + '\')">Update</button>'
+      + ' <button class="btn btn-xs btn-danger" onclick="deleteRequest(\'' + r.id + '\')">Del</button></td>'
+      + '</tr>';
+  });
+  document.getElementById('maint-body').innerHTML = html;
+  document.getElementById('ft-cost').textContent = fmtC(totalCost);
+}
+
+function openUpdateRequest(id) {
+  var requests = getRequests();
+  var r = requests.find(function(x){return x.id===id;});
+  if (!r) return;
+  showModal('Update Request - ' + r.type + ' (' + r.unit + ')',
+    '<p style="font-size:13px;color:var(--txt2);margin-bottom:14px;">' + r.description + '</p>'
+    + '<div class="form-group"><label>Status</label>'
+    + '<select id="ur-status" style="width:100%">'
+    + ['Open','In Progress','Completed','Cancelled'].map(function(s){return '<option' + (r.status===s?' selected':'') + '>' + s + '</option>';}).join('')
+    + '</select></div>'
+    + '<div class="form-group"><label>Assigned Contractor</label><input type="text" id="ur-contractor" value="' + (r.contractor||'') + '" placeholder="Bob Plumbing" style="width:100%"></div>'
+    + '<div class="grid-2" style="gap:10px;">'
+    + '<div class="form-group"><label>Estimated Cost ($)</label><input type="number" id="ur-est" value="' + (r.estimatedCost||0) + '" style="width:100%"></div>'
+    + '<div class="form-group"><label>Actual Cost ($)</label><input type="number" id="ur-actual" value="' + (r.actualCost||0) + '" style="width:100%"></div>'
+    + '</div>'
+    + '<div class="form-group"><label>Completed Date</label><input type="date" id="ur-completed" value="' + (r.completedDate||'') + '" style="width:100%"></div>'
+    + '<div class="form-group"><label>Notes</label><textarea id="ur-notes" rows="2" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;resize:vertical;">' + (r.notes||'') + '</textarea></div>',
+    function() {
+      var updated = Object.assign({}, r, {
+        status: document.getElementById('ur-status').value,
+        contractor: document.getElementById('ur-contractor').value.trim(),
+        estimatedCost: parseFloat(document.getElementById('ur-est').value)||0,
+        actualCost: parseFloat(document.getElementById('ur-actual').value)||0,
+        completedDate: document.getElementById('ur-completed').value,
+        notes: document.getElementById('ur-notes').value.trim()
+      });
+      lk.set('maintenance', requests.map(function(x){return x.id===id?updated:x;}));
+      renderRequests();
+      toast('Request updated');
+      /* Auto-add to expenses if completed with cost */
+      if (updated.status === 'Completed' && updated.actualCost > 0) {
+        var exps = lk.get('expenses') || [];
+        var alreadyAdded = exps.find(function(e){return e.maintId===id;});
+        if (!alreadyAdded) {
+          var dt = updated.completedDate || new Date().toISOString().split('T')[0];
+          var parts = dt.split('-');
+          exps.push({
+            id: 'exp_maint_' + id,
+            maintId: id,
+            date: dt,
+            description: r.type + ' - ' + r.description.slice(0,50),
+            category: 'repairs',
+            prop: r.prop,
+            propLabel: r.propLabel,
+            unit: r.unit,
+            amount: updated.actualCost,
+            payee: updated.contractor,
+            method: 'Check',
+            ref: '',
+            notes: 'Auto-added from maintenance log',
+            monthKey: parseInt(parts[1]) + '_' + parts[0]
+          });
+          lk.set('expenses', exps);
+          toast('Cost also added to Expense Log', 'info');
+        }
+      }
+    }, 'Save Update');
+}
+
+function deleteRequest(id) {
+  if (!confirm('Delete this maintenance request?')) return;
+  lk.set('maintenance', getRequests().filter(function(r){return r.id!==id;}));
+  renderRequests();
+  toast('Request deleted', 'warn');
+}
+
+function printBlankForm() {
+  var w = window.open('', '_blank');
+  w.document.write('<!DOCTYPE html><html><head><title>Maintenance Request Form - LandlordKit</title>'
+    + '<style>body{font-family:Arial,sans-serif;max-width:600px;margin:40px auto;font-size:14px;color:#111;}'
+    + 'h2{color:#2563eb;margin-bottom:4px;}h4{margin:20px 0 6px;border-bottom:1px solid #ddd;padding-bottom:4px;}'
+    + '.field{margin-bottom:16px;}.label{font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#666;display:block;margin-bottom:4px;}'
+    + '.line{border-bottom:1.5px solid #111;height:28px;width:100%;}'
+    + '.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}'
+    + '.checkbox{display:flex;align-items:center;gap:8px;margin-bottom:8px;}'
+    + '.box{width:16px;height:16px;border:1.5px solid #111;display:inline-block;flex-shrink:0;}'
+    + 'footer{margin-top:40px;font-size:11px;color:#999;text-align:center;border-top:1px solid #ddd;padding-top:12px;}'
+    + '</style></head><body>'
+    + '<h2>LandlordKit</h2><h3 style="margin-top:0;color:#374151;">Tenant Maintenance Request Form</h3>'
+    + '<h4>Property Information</h4>'
+    + '<div class="grid"><div class="field"><span class="label">Property Address</span><div class="line"></div></div>'
+    + '<div class="field"><span class="label">Unit Number</span><div class="line"></div></div></div>'
+    + '<div class="field"><span class="label">Tenant Name</span><div class="line"></div></div>'
+    + '<div class="grid"><div class="field"><span class="label">Phone Number</span><div class="line"></div></div>'
+    + '<div class="field"><span class="label">Date Submitted</span><div class="line"></div></div></div>'
+    + '<h4>Issue Details</h4>'
+    + '<div class="field"><span class="label">Type of Issue (check one)</span>'
+    + '<div class="grid" style="margin-top:6px;">'
+    + '<div><div class="checkbox"><span class="box"></span>Plumbing</div><div class="checkbox"><span class="box"></span>Electrical</div><div class="checkbox"><span class="box"></span>HVAC / Heating</div><div class="checkbox"><span class="box"></span>Appliance</div></div>'
+    + '<div><div class="checkbox"><span class="box"></span>Structural / Roof</div><div class="checkbox"><span class="box"></span>Pest Control</div><div class="checkbox"><span class="box"></span>Doors / Windows</div><div class="checkbox"><span class="box"></span>Other</div></div>'
+    + '</div></div>'
+    + '<div class="field"><span class="label">Priority</span>'
+    + '<div style="display:flex;gap:24px;margin-top:6px;">'
+    + '<div class="checkbox"><span class="box"></span><strong>Emergency</strong> (safety hazard)</div>'
+    + '<div class="checkbox"><span class="box"></span><strong>Urgent</strong> (within 48hrs)</div>'
+    + '<div class="checkbox"><span class="box"></span><strong>Routine</strong> (schedule when convenient)</div>'
+    + '</div></div>'
+    + '<div class="field"><span class="label">Description of Problem</span>'
+    + '<div class="line" style="margin-bottom:8px;"></div><div class="line" style="margin-bottom:8px;"></div><div class="line"></div></div>'
+    + '<div class="field"><span class="label">Location in Unit (e.g. kitchen, bathroom)</span><div class="line"></div></div>'
+    + '<h4>Access Permission</h4>'
+    + '<div class="field">'
+    + '<div class="checkbox"><span class="box"></span>I give permission for entry without me present</div>'
+    + '<div class="checkbox"><span class="box"></span>I require 24-hour advance notice</div>'
+    + '<div class="checkbox"><span class="box"></span>Preferred access times: <span style="border-bottom:1px solid #111;display:inline-block;width:200px;"></span></div>'
+    + '</div>'
+    + '<div class="grid" style="margin-top:20px;">'
+    + '<div class="field"><span class="label">Tenant Signature</span><div class="line" style="margin-top:20px;"></div></div>'
+    + '<div class="field"><span class="label">Date</span><div class="line" style="margin-top:20px;"></div></div>'
+    + '</div>'
+    + '<footer>LandlordKit.com &mdash; Free tools for independent landlords &mdash; For landlord use only after completion below</footer>'
+    + '<h4 style="margin-top:24px;">For Landlord Use</h4>'
+    + '<div class="grid">'
+    + '<div class="field"><span class="label">Assigned To</span><div class="line"></div></div>'
+    + '<div class="field"><span class="label">Date Assigned</span><div class="line"></div></div>'
+    + '</div>'
+    + '<div class="grid">'
+    + '<div class="field"><span class="label">Estimated Cost</span><div class="line"></div></div>'
+    + '<div class="field"><span class="label">Actual Cost</span><div class="line"></div></div>'
+    + '</div>'
+    + '<div class="field"><span class="label">Completed Date</span><div class="line"></div></div>'
+    + '</body></html>');
+  w.document.close();
+  w.print();
+}
+
+function seedMaintenance() {
+  if (lk.get('maintenance')) return;
+  var today = new Date().toISOString().split('T')[0];
+  lk.set('maintenance', [
+    {id:'m1',date:today,tenant:'Sarah Johnson',prop:'oak',propLabel:'123 Oak St',unit:'102',type:'Plumbing',priority:'Urgent',description:'Leaking pipe under kitchen sink - dripping constantly',access:'OK to enter weekdays 9am-5pm',status:'Open',contractor:'',estimatedCost:0,actualCost:0,completedDate:'',notes:''},
+    {id:'m2',date:today,tenant:'Bob Thompson',prop:'elm',propLabel:'456 Elm Ave',unit:'203',type:'HVAC / Heating / Cooling',priority:'Routine',description:'Air conditioning not cooling properly, room stays warm',access:'Call before entering',status:'In Progress',contractor:'Cool Air LLC',estimatedCost:250,actualCost:0,completedDate:'',notes:'Contractor coming Thursday'}
+  ]);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  buildSidebar();
+  initPropSelect();
+  initDateField();
+  seedMaintenance();
+  renderRequests();
+});
+</script>
 </body>
 </html>
