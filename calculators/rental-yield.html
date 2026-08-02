@@ -3,31 +3,239 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Rental yield & ROI — LandlordKit</title>
+<title>Rental Yield &amp; ROI Calculator — LandlordKit</title>
+<meta name="description" content="Work out gross yield, net yield, cap rate, cash-on-cash return, the 1% rule and total ROI for any rental property. Free, no signup.">
 <link rel="stylesheet" href="../assets/css/main.css">
+<style>
+.ry-layout{display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start}
+.input-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:24px;margin-bottom:16px}
+.input-section-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.result-col{display:flex;flex-direction:column;gap:16px}
+.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;position:relative}
+.metric.hero{grid-column:span 3;background:var(--blue-bg);border:2px solid var(--blue-bd);text-align:center;padding:24px}
+.metric.hero.good{background:var(--green-bg);border-color:var(--green-bd)}
+.metric.hero.bad{background:var(--red-bg);border-color:var(--red-bd)}
+.m-lab{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);margin-bottom:5px}
+.m-val{font-family:var(--font-d);font-size:26px;font-weight:700;line-height:1.1;color:var(--txt)}
+.metric.hero .m-val{font-size:46px;color:var(--blue)}
+.metric.hero.good .m-val{color:var(--green)}
+.metric.hero.bad .m-val{color:var(--red)}
+.metric.hero .m-lab{font-size:12px;color:var(--blue)}
+.metric.hero.good .m-lab{color:var(--green)}
+.metric.hero.bad .m-lab{color:var(--red)}
+.m-sub{font-size:12px;color:var(--txt3);margin-top:4px;line-height:1.45}
+.cf-tbl{width:100%;border-collapse:collapse;font-size:14px}
+.cf-tbl td{padding:8px 0;border-bottom:1px solid var(--border)}
+.cf-tbl td:last-child{text-align:right;font-family:var(--font-m);font-weight:500}
+.cf-tbl tr.tot td{border-top:2px solid var(--border2);border-bottom:none;font-weight:700;padding-top:11px;font-family:var(--font-d)}
+.cf-tbl tr.sub td{color:var(--txt2)}
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600}
+.p-good{background:var(--green-bg);color:var(--green)}
+.p-warn{background:var(--amber-bg);color:var(--amber)}
+.p-bad{background:var(--red-bg);color:var(--red)}
+@media(max-width:900px){.ry-layout{grid-template-columns:1fr}.metric-grid{grid-template-columns:1fr 1fr}.metric.hero{grid-column:span 2}}
+</style>
 </head>
 <body>
 <div id="nav-root"></div>
 <div class="app-layout">
   <aside class="sidebar"><div id="sidebar-root"></div></aside>
   <main class="main-content">
+
     <div class="page-header" style="margin:-32px -32px 24px;padding:20px 32px;">
-      <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> › Calculators</div>
-      <h1 style="font-size:1.6rem;margin-top:6px;">📈 Rental yield & ROI</h1>
-      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Calculate gross yield, net yield, cash-on-cash return, and cap rate.</p>
+      <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> &rsaquo; Calculators &rsaquo; Rental yield &amp; ROI</div>
+      <h1 style="font-size:1.6rem;margin-top:6px;">Rental yield &amp; ROI calculator</h1>
+      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Six ways to measure whether a property earns its keep &mdash; and what each one actually tells you.</p>
     </div>
-    <div class="card" style="text-align:center;padding:60px 40px;">
-      <div style="font-size:48px;margin-bottom:16px;">📈</div>
-      <h2 style="margin-bottom:10px;">Rental yield & ROI</h2>
-      <p style="max-width:440px;margin:0 auto 24px;font-size:15px;">This page is under active development and will be ready in the next phase. The rent roll and break-even calculator are fully functional now.</p>
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-        <a href="../income/rent-roll.html" class="btn btn-primary">Open rent roll →</a>
-        <a href="../calculators/break-even.html" class="btn btn-ghost">Break-even calculator</a>
+
+    <div class="ry-layout">
+      <div>
+        <div class="input-section">
+          <div class="input-section-title">Purchase</div>
+          <div class="form-group"><label for="price">Purchase price</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="price" type="number" value="250000" class="w-full"></div></div>
+          <div class="form-group"><label for="down">Down payment</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="down" type="number" value="50000" class="w-full"></div>
+            <p class="form-hint" id="downPct"></p></div>
+          <div class="form-group"><label for="closing">Closing costs &amp; initial repairs</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="closing" type="number" value="8000" class="w-full"></div></div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-section-title">Income</div>
+          <div class="form-group"><label for="rent">Monthly rent</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="rent" type="number" value="1800" class="w-full"></div></div>
+          <div class="form-group"><label for="other">Other monthly income</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="other" type="number" value="0" class="w-full"></div>
+            <p class="form-hint">Parking, storage, laundry, pet rent.</p></div>
+          <div class="form-group"><label for="vac">Vacancy allowance</label>
+            <div class="input-wrap"><input id="vac" type="number" value="6" step="0.5" class="w-full"><span class="input-suf">%</span></div>
+            <p class="form-hint">Roughly 5&ndash;8% in most markets. One vacant month a year is 8.3%.</p></div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-section-title">Annual operating costs</div>
+          <div class="form-group"><label for="tax">Property tax</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="tax" type="number" value="3000" class="w-full"></div></div>
+          <div class="form-group"><label for="ins">Insurance</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="ins" type="number" value="1200" class="w-full"></div></div>
+          <div class="form-group"><label for="hoa">HOA / condo fees</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="hoa" type="number" value="0" class="w-full"></div></div>
+          <div class="form-group"><label for="util">Utilities you pay</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="util" type="number" value="0" class="w-full"></div></div>
+          <div class="form-group"><label for="maint">Maintenance &amp; repairs</label>
+            <div class="input-wrap"><input id="maint" type="number" value="1" step="0.25" class="w-full"><span class="input-suf">% of price</span></div>
+            <p class="form-hint">1% of purchase price a year is the common rule of thumb.</p></div>
+          <div class="form-group"><label for="capex">Capital reserve</label>
+            <div class="input-wrap"><input id="capex" type="number" value="5" step="0.5" class="w-full"><span class="input-suf">% of rent</span></div>
+            <p class="form-hint">Roof, HVAC, water heater. They fail eventually &mdash; set it aside monthly.</p></div>
+          <div class="form-group"><label for="mgmt">Management fee</label>
+            <div class="input-wrap"><input id="mgmt" type="number" value="0" step="0.5" class="w-full"><span class="input-suf">% of rent</span></div>
+            <p class="form-hint">8&ndash;10% if you use an agent. Zero if you self-manage.</p></div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-section-title">Financing</div>
+          <div class="form-group"><label for="rate">Interest rate</label>
+            <div class="input-wrap"><input id="rate" type="number" value="6.5" step="0.05" class="w-full"><span class="input-suf">%</span></div></div>
+          <div class="form-group"><label for="term">Loan term</label>
+            <div class="input-wrap"><input id="term" type="number" value="30" class="w-full"><span class="input-suf">years</span></div></div>
+          <div class="form-group"><label for="apprec">Assumed annual appreciation</label>
+            <div class="input-wrap"><input id="apprec" type="number" value="3" step="0.5" class="w-full"><span class="input-suf">%</span></div>
+            <p class="form-hint">Used for total ROI only. It is an assumption, not income.</p></div>
+        </div>
+      </div>
+
+      <div class="result-col">
+        <div class="metric-grid" id="metrics"></div>
+
+        <div class="input-section" style="margin:0">
+          <div class="input-section-title">Monthly cash flow</div>
+          <table class="cf-tbl" id="cfTable"></table>
+        </div>
+
+        <div class="input-section" style="margin:0">
+          <div class="input-section-title">What each number means</div>
+          <div id="explain" style="font-size:13.5px;line-height:1.7;color:var(--txt2)"></div>
+        </div>
+
+        <div class="card" style="background:var(--amber-bg);border-color:var(--amber-bd)">
+          <h4 style="margin-bottom:8px">The number most people get wrong</h4>
+          <p style="font-size:14px">Gross yield ignores every cost, which is why listing sites quote it. A property showing 8.6% gross can be losing money each month once tax, insurance, vacancy, maintenance and the mortgage are counted. Judge a deal on <strong>cash-on-cash return</strong> and <strong>monthly cash flow</strong> &mdash; those are the two you actually live with.</p>
+        </div>
       </div>
     </div>
+
   </main>
 </div>
+
 <script src="../assets/js/nav.js"></script>
-<script>document.addEventListener('DOMContentLoaded',()=>{ buildSidebar(''); });</script>
+<script>
+var IDS=['price','down','closing','rent','other','vac','tax','ins','hoa','util','maint','capex','mgmt','rate','term','apprec'];
+
+function pct(n,d){ return d?(n/d*100):0; }
+function money(n){ return (n<0?'-$':'$')+Math.abs(Math.round(n)).toLocaleString('en-US'); }
+function pc(n){ return (Math.round(n*100)/100).toFixed(2)+'%'; }
+
+function mortgage(principal,ratePct,years){
+  if(principal<=0||years<=0) return 0;
+  var r=ratePct/100/12, n=years*12;
+  if(r===0) return principal/n;
+  return principal*r/(1-Math.pow(1+r,-n));
+}
+
+function calc(){
+  var v={}; IDS.forEach(function(i){ v[i]=gv(i); });
+
+  var loan=Math.max(0,v.price-v.down);
+  var cashIn=v.down+v.closing;
+
+  var grossAnnual=(v.rent+v.other)*12;
+  var vacLoss=grossAnnual*v.vac/100;
+  var effective=grossAnnual-vacLoss;
+
+  var maintAnnual=v.price*v.maint/100;
+  var capexAnnual=v.rent*12*v.capex/100;
+  var mgmtAnnual=effective*v.mgmt/100;
+  var opex=v.tax+v.ins+v.hoa+v.util+maintAnnual+capexAnnual+mgmtAnnual;
+
+  var noi=effective-opex;
+  var mPay=mortgage(loan,v.rate,v.term);
+  var debtAnnual=mPay*12;
+  var cashFlow=noi-debtAnnual;
+
+  var grossYield=pct(grossAnnual,v.price);
+  var netYield=pct(noi,v.price+v.closing);
+  var capRate=pct(noi,v.price);
+  var coc=pct(cashFlow,cashIn);
+  var onePct=pct(v.rent,v.price);
+
+  var r=v.rate/100/12, principalYr1=0;
+  if(loan>0&&mPay>0){ var bal=loan;
+    for(var m=0;m<12;m++){ var int=bal*r; principalYr1+=Math.max(0,mPay-int); bal-=Math.max(0,mPay-int); }
+  }
+  var apprecGain=v.price*v.apprec/100;
+  var totalRet=cashFlow+principalYr1+apprecGain;
+  var totalROI=pct(totalRet,cashIn);
+
+  var cls=cashFlow>0?'good':cashFlow<0?'bad':'';
+  var band=function(x,g,w){ return x>=g?'p-good':x>=w?'p-warn':'p-bad'; };
+
+  $('downPct').textContent = v.price>0 ? pc(pct(v.down,v.price))+' of purchase price' : '';
+
+  $('metrics').innerHTML=
+     '<div class="metric hero '+cls+'"><div class="m-lab">Monthly cash flow</div>'
+    +'<div class="m-val">'+money(cashFlow)+'</div>'
+    +'<div class="m-sub">'+(cashFlow>=0
+        ? 'After every cost including the mortgage. That is '+money(cashFlow*12)+' a year in your pocket.'
+        : 'This property costs you '+money(Math.abs(cashFlow))+' every month out of your own income.')+'</div></div>'
+
+    +'<div class="metric"><div class="m-lab">Cash-on-cash return</div><div class="m-val">'+pc(coc)+'</div>'
+    +'<div class="m-sub"><span class="pill '+band(coc,8,4)+'">'+(coc>=8?'Strong':coc>=4?'Modest':'Weak')+'</span> on '+money(cashIn)+' invested</div></div>'
+
+    +'<div class="metric"><div class="m-lab">Cap rate</div><div class="m-val">'+pc(capRate)+'</div>'
+    +'<div class="m-sub"><span class="pill '+band(capRate,7,5)+'">'+(capRate>=7?'Strong':capRate>=5?'Average':'Low')+'</span> ignores financing</div></div>'
+
+    +'<div class="metric"><div class="m-lab">Net yield</div><div class="m-val">'+pc(netYield)+'</div>'
+    +'<div class="m-sub">NOI over price plus costs</div></div>'
+
+    +'<div class="metric"><div class="m-lab">Gross yield</div><div class="m-val">'+pc(grossYield)+'</div>'
+    +'<div class="m-sub">Before any expenses &mdash; headline only</div></div>'
+
+    +'<div class="metric"><div class="m-lab">1% rule</div><div class="m-val">'+pc(onePct)+'</div>'
+    +'<div class="m-sub"><span class="pill '+band(onePct,1,0.7)+'">'+(onePct>=1?'Passes':onePct>=0.7?'Borderline':'Fails')+'</span> monthly rent vs price</div></div>'
+
+    +'<div class="metric"><div class="m-lab">Total ROI (year 1)</div><div class="m-val">'+pc(totalROI)+'</div>'
+    +'<div class="m-sub">Cash flow + '+money(principalYr1)+' loan paydown + '+money(apprecGain)+' assumed appreciation</div></div>';
+
+  $('cfTable').innerHTML=
+     '<tr><td>Rent and other income</td><td>'+money(grossAnnual/12)+'</td></tr>'
+    +'<tr class="sub"><td>Less vacancy at '+pc(v.vac)+'</td><td>'+money(-vacLoss/12)+'</td></tr>'
+    +'<tr><td><strong>Effective income</strong></td><td>'+money(effective/12)+'</td></tr>'
+    +'<tr class="sub"><td>Property tax</td><td>'+money(-v.tax/12)+'</td></tr>'
+    +'<tr class="sub"><td>Insurance</td><td>'+money(-v.ins/12)+'</td></tr>'
+    +(v.hoa?'<tr class="sub"><td>HOA / condo</td><td>'+money(-v.hoa/12)+'</td></tr>':'')
+    +(v.util?'<tr class="sub"><td>Utilities</td><td>'+money(-v.util/12)+'</td></tr>':'')
+    +'<tr class="sub"><td>Maintenance</td><td>'+money(-maintAnnual/12)+'</td></tr>'
+    +'<tr class="sub"><td>Capital reserve</td><td>'+money(-capexAnnual/12)+'</td></tr>'
+    +(v.mgmt?'<tr class="sub"><td>Management</td><td>'+money(-mgmtAnnual/12)+'</td></tr>':'')
+    +'<tr><td><strong>Net operating income</strong></td><td>'+money(noi/12)+'</td></tr>'
+    +'<tr class="sub"><td>Mortgage payment (P&amp;I)</td><td>'+money(-mPay)+'</td></tr>'
+    +'<tr class="tot"><td>Monthly cash flow</td><td>'+money(cashFlow)+'</td></tr>';
+
+  $('explain').innerHTML=
+     '<p style="margin-bottom:9px"><strong>Cash-on-cash</strong> &mdash; annual cash flow divided by the cash you actually put in. The only metric that answers "what is my money earning?" Compare it against what the same '+money(cashIn)+' would earn elsewhere.</p>'
+    +'<p style="margin-bottom:9px"><strong>Cap rate</strong> &mdash; net operating income over price, ignoring your mortgage. It measures the property, not the deal, which is why it is used to compare buildings rather than buyers.</p>'
+    +'<p style="margin-bottom:9px"><strong>1% rule</strong> &mdash; a screening shortcut: monthly rent should be about 1% of price. It rarely holds in expensive coastal markets, so treat a fail as a reason to check the numbers, not to walk away.</p>'
+    +'<p style="margin:0"><strong>Total ROI</strong> &mdash; adds loan paydown and assumed appreciation to cash flow. Both are real returns but neither pays a bill this month, and appreciation is a guess. Never buy on this number alone.</p>';
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  buildSidebar();
+  IDS.forEach(function(i){ var e=$(i); if(e) e.addEventListener('input',calc); });
+  calc();
+});
+</script>
 </body>
 </html>

@@ -3,31 +3,230 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Deposit return — LandlordKit</title>
+<title>Security Deposit Return Calculator — LandlordKit</title>
+<meta name="description" content="Itemise deductions, apply depreciation for age, and produce a deposit return statement you can hand to the tenant. Free, no signup.">
 <link rel="stylesheet" href="../assets/css/main.css">
+<style>
+.dr-layout{display:grid;grid-template-columns:400px 1fr;gap:24px;align-items:start}
+.input-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:24px;margin-bottom:16px}
+.input-section-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.ded{border:1px solid var(--border);border-radius:var(--r-lg);padding:12px;margin-bottom:10px;background:var(--bg)}
+.ded-top{display:grid;grid-template-columns:1fr 96px 34px;gap:8px;align-items:center}
+.ded input,.ded select{padding:7px 9px;border:1.5px solid var(--border2);border-radius:6px;font-size:13.5px;width:100%}
+.ded-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.ded-note{font-size:11.5px;color:var(--txt3);margin-top:6px;line-height:1.5}
+.x-btn{background:none;border:none;color:var(--txt3);font-size:19px;line-height:1;cursor:pointer}
+.x-btn:hover{color:var(--red)}
+.hero{border-radius:var(--r-xl);padding:26px;text-align:center;border:2px solid}
+.hero.refund{background:var(--green-bg);border-color:var(--green-bd)}
+.hero.owed{background:var(--red-bg);border-color:var(--red-bd)}
+.hero.zero{background:var(--blue-bg);border-color:var(--blue-bd)}
+.h-lab{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.h-val{font-family:var(--font-d);font-size:46px;font-weight:700;line-height:1}
+.hero.refund .h-lab,.hero.refund .h-val{color:var(--green)}
+.hero.owed .h-lab,.hero.owed .h-val{color:var(--red)}
+.hero.zero .h-lab,.hero.zero .h-val{color:var(--blue)}
+.h-sub{font-size:14px;color:var(--txt2);margin-top:8px}
+.st-tbl{width:100%;border-collapse:collapse;font-size:14px}
+.st-tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);padding:6px 0;border-bottom:1px solid var(--border)}
+.st-tbl td{padding:9px 0;border-bottom:1px solid var(--border);vertical-align:top}
+.st-tbl td:last-child,.st-tbl th:last-child{text-align:right;font-family:var(--font-m)}
+.st-tbl tr.tot td{border-top:2px solid var(--border2);border-bottom:none;font-weight:700;font-family:var(--font-d);padding-top:11px}
+@media print{.nav,.sidebar,.no-print,.dr-layout>div:first-child{display:none!important}.app-layout{display:block}.main-content{padding:0}.dr-layout{grid-template-columns:1fr}body{background:#fff}}
+@media(max-width:900px){.dr-layout{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 <div id="nav-root"></div>
 <div class="app-layout">
   <aside class="sidebar"><div id="sidebar-root"></div></aside>
   <main class="main-content">
-    <div class="page-header" style="margin:-32px -32px 24px;padding:20px 32px;">
-      <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> › Calculators</div>
-      <h1 style="font-size:1.6rem;margin-top:6px;">💵 Deposit return</h1>
-      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Itemize deductions and calculate the final deposit return amount.</p>
+
+    <div class="page-header no-print" style="margin:-32px -32px 24px;padding:20px 32px;">
+      <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> &rsaquo; Calculators &rsaquo; Deposit return</div>
+      <h1 style="font-size:1.6rem;margin-top:6px;">Security deposit return calculator</h1>
+      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Itemise what you are deducting, apply depreciation for age, and print a statement the tenant can check.</p>
     </div>
-    <div class="card" style="text-align:center;padding:60px 40px;">
-      <div style="font-size:48px;margin-bottom:16px;">💵</div>
-      <h2 style="margin-bottom:10px;">Deposit return</h2>
-      <p style="max-width:440px;margin:0 auto 24px;font-size:15px;">This page is under active development and will be ready in the next phase. The rent roll and break-even calculator are fully functional now.</p>
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-        <a href="../income/rent-roll.html" class="btn btn-primary">Open rent roll →</a>
-        <a href="../calculators/break-even.html" class="btn btn-ghost">Break-even calculator</a>
+
+    <div class="dr-layout">
+      <div>
+        <div class="input-section">
+          <div class="input-section-title">The deposit</div>
+          <div class="form-group"><label for="dep">Deposit held</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="dep" type="number" value="1500" class="w-full"></div></div>
+          <div class="form-group"><label for="unpaid">Unpaid rent owed</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="unpaid" type="number" value="0" class="w-full"></div></div>
+          <div class="form-group"><label for="interest">Interest owed on deposit</label>
+            <div class="input-wrap"><span class="input-pre">$</span><input id="interest" type="number" value="0" class="w-full"></div>
+            <p class="form-hint">Some states and cities require you to pay interest on a held deposit. Check your local rule &mdash; this field does not assume one.</p></div>
+          <div class="form-group"><label for="tenancyYrs">Length of tenancy</label>
+            <div class="input-wrap"><input id="tenancyYrs" type="number" value="2" step="0.5" class="w-full"><span class="input-suf">years</span></div>
+            <p class="form-hint">Used to depreciate items with a finite life.</p></div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-section-title">Deductions</div>
+          <div id="dedList"></div>
+          <button class="btn btn-ghost btn-sm w-full" onclick="addDed()">+ Add a deduction</button>
+        </div>
+      </div>
+
+      <div class="result-col" style="display:flex;flex-direction:column;gap:16px">
+        <div id="hero" class="hero zero"></div>
+
+        <div class="input-section" style="margin:0">
+          <div class="flex-between" style="align-items:center;margin-bottom:14px">
+            <div class="input-section-title" style="margin:0;border:none;padding:0">Deposit return statement</div>
+            <button class="btn btn-ghost btn-xs no-print" onclick="window.print()">Print / save PDF</button>
+          </div>
+          <table class="st-tbl" id="stmt"></table>
+          <p style="font-size:12px;color:var(--txt3);margin-top:14px">Prepared <span id="today"></span>. Give the tenant a copy with receipts or estimates attached for every deduction.</p>
+        </div>
+
+        <div id="flags"></div>
+
+        <div class="card" style="background:var(--amber-bg);border-color:var(--amber-bd)">
+          <h4 style="margin-bottom:8px">Wear and tear is not deductible &mdash; anywhere</h4>
+          <p style="font-size:14px;margin-bottom:10px">No state allows a landlord to charge a tenant for ordinary use. The distinction courts apply is roughly this:</p>
+          <div class="grid-2" style="gap:14px">
+            <div><p style="font-size:12.5px;font-weight:600;color:var(--green);margin-bottom:4px">Wear and tear &mdash; your cost</p>
+              <p style="font-size:12.5px;margin:0">Faded paint, worn carpet traffic lanes, small nail holes, loose door handles, minor scuffs, grout discolouration, worn appliance finish.</p></div>
+            <div><p style="font-size:12.5px;font-weight:600;color:var(--red);margin-bottom:4px">Damage &mdash; deductible</p>
+              <p style="font-size:12.5px;margin:0">Burns, pet stains through to the pad, large holes, broken fixtures, missing appliances, unapproved paint colours, removed carpet.</p></div>
+          </div>
+        </div>
+
+        <div class="card no-print" style="background:var(--blue-bg);border-color:var(--blue-bd)">
+          <h4 style="margin-bottom:8px">Depreciation is why full replacement rarely holds up</h4>
+          <p style="font-size:14px">If a carpet with an eight-year life is ruined in year six, you have lost two years of its value, not eight. Charging the tenant for a brand-new carpet is the single most common reason a landlord loses a deposit case. Set the item's useful life and its age below and the calculator applies the reduction for you.</p>
+        </div>
+
+        <div class="card no-print">
+          <h4 style="margin-bottom:8px">Before you send this</h4>
+          <ul style="font-size:14px;padding-left:18px;line-height:1.8;color:var(--txt2)">
+            <li>Check your state's deadline for returning a deposit. Missing it can forfeit your right to deduct anything, and several states impose penalties of two to three times the deposit.</li>
+            <li>Attach a receipt or written estimate for every line. An unsupported figure is the first thing challenged.</li>
+            <li>Compare against your <a href="../tenants/move-in.html">move-in record</a>. Without it, the tenant's account of the original condition usually prevails.</li>
+            <li>Send to the tenant's forwarding address in writing, and keep proof of posting.</li>
+          </ul>
+        </div>
       </div>
     </div>
+
   </main>
 </div>
+
 <script src="../assets/js/nav.js"></script>
-<script>document.addEventListener('DOMContentLoaded',()=>{ buildSidebar(''); });</script>
+<script>
+var LIVES=[['','Not depreciated (cleaning, rubbish removal, repairs)'],['5','Interior paint &mdash; 5 years'],['8','Carpet &mdash; 8 years'],['10','Vinyl / laminate flooring &mdash; 10 years'],['10','Window blinds &mdash; 10 years'],['12','Appliances &mdash; 12 years'],['15','Countertops &mdash; 15 years'],['20','Hardwood flooring &mdash; 20 years']];
+var deds=[];
+
+function money(n){ return (n<0?'-$':'$')+Math.abs(Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s){ return String(s||'').replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];}); }
+
+function addDed(desc,cost){
+  deds.push({id:'d'+Date.now()+Math.random().toString(36).slice(2,5),
+    desc:desc||'',cost:cost||0,life:'',age:0});
+  drawDeds(); calc();
+}
+function delDed(id){ deds=deds.filter(function(d){return d.id!==id;}); drawDeds(); calc(); }
+
+function drawDeds(){
+  if(!deds.length){
+    $('dedList').innerHTML='<p style="font-size:13px;color:var(--txt3);margin-bottom:12px">No deductions yet. If the unit came back in good order, the whole deposit is refundable.</p>';
+    return;
+  }
+  $('dedList').innerHTML=deds.map(function(d){
+    return '<div class="ded">'
+      +'<div class="ded-top">'
+        +'<input placeholder="What are you charging for?" value="'+esc(d.desc)+'" oninput="upd(\''+d.id+'\',\'desc\',this.value)">'
+        +'<input type="number" placeholder="0" value="'+(d.cost||'')+'" oninput="upd(\''+d.id+'\',\'cost\',this.value)">'
+        +'<button class="x-btn" onclick="delDed(\''+d.id+'\')" title="Remove">&times;</button>'
+      +'</div>'
+      +'<div class="ded-meta">'
+        +'<select onchange="upd(\''+d.id+'\',\'life\',this.value)">'
+          +LIVES.map(function(l){return '<option value="'+l[0]+'"'+(d.life===l[0]?' selected':'')+'>'+l[1]+'</option>';}).join('')
+        +'</select>'
+        +'<input type="number" step="0.5" placeholder="Age of item (years)" value="'+(d.age||'')+'" oninput="upd(\''+d.id+'\',\'age\',this.value)"'+(d.life?'':' disabled')+'>'
+      +'</div>'
+      +'<div class="ded-note" id="note_'+d.id+'"></div>'
+      +'</div>';
+  }).join('');
+}
+
+function upd(id,field,val){
+  deds.forEach(function(d){ if(d.id===id) d[field]=(field==='desc')?val:(field==='life'?val:parseFloat(val)||0); });
+  if(field==='life') drawDeds();
+  calc();
+}
+
+function netOf(d){
+  var cost=+d.cost||0;
+  if(!d.life) return {net:cost,pctBorne:0,text:''};
+  var life=parseFloat(d.life), age=Math.max(0,+d.age||0);
+  if(age>=life) return {net:0,pctBorne:100,
+    text:'This item was already past its '+life+'-year life, so its remaining value was zero. Nothing is chargeable.'};
+  var remaining=(life-age)/life;
+  var net=cost*remaining;
+  return {net:net,pctBorne:Math.round((1-remaining)*100),
+    text:'Age '+age+' of '+life+' years. '+Math.round(remaining*100)+'% of its life was left, so '+money(net)+' of the '+money(cost)+' is chargeable.'};
+}
+
+function calc(){
+  var dep=gv('dep'), unpaid=gv('unpaid'), interest=gv('interest');
+  var rows='', totalDed=0;
+
+  deds.forEach(function(d){
+    var r=netOf(d);
+    totalDed+=r.net;
+    var n=$('note_'+d.id); if(n) n.textContent=r.text;
+    rows+='<tr><td>'+(esc(d.desc)||'<span class="text-muted">Unnamed deduction</span>')
+      +(r.text?'<div style="font-size:11.5px;color:var(--txt3);margin-top:2px">'+r.text+'</div>':'')
+      +'</td><td>'+money(r.net)+'</td></tr>';
+  });
+
+  if(unpaid>0) rows+='<tr><td>Unpaid rent</td><td>'+money(unpaid)+'</td></tr>';
+  var deductions=totalDed+unpaid;
+  var refund=dep+interest-deductions;
+
+  $('stmt').innerHTML='<thead><tr><th>Item</th><th>Amount</th></tr></thead><tbody>'
+    +'<tr><td>Security deposit held</td><td>'+money(dep)+'</td></tr>'
+    +(interest>0?'<tr><td>Interest on deposit</td><td>'+money(interest)+'</td></tr>':'')
+    +(rows?'<tr><td colspan="2" style="padding-top:14px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--txt3);border:none">Deductions</td></tr>'+rows:'')
+    +'<tr class="tot"><td>'+(refund>=0?'Refund due to tenant':'Balance owed by tenant')+'</td><td>'+money(Math.abs(refund))+'</td></tr>'
+    +'</tbody>';
+
+  var cls=refund>0?'refund':refund<0?'owed':'zero';
+  $('hero').className='hero '+cls;
+  $('hero').innerHTML='<div class="h-lab">'+(refund>0?'Refund due to tenant':refund<0?'Tenant owes you':'Nothing due either way')+'</div>'
+    +'<div class="h-val">'+money(Math.abs(refund))+'</div>'
+    +'<div class="h-sub">'+(refund>0
+        ? 'Return this within your state deadline, with the itemised statement below.'
+        : refund<0
+        ? 'The deposit does not cover the deductions. You must still send the itemised statement before pursuing the balance.'
+        : 'Deductions exactly equal the deposit. Send the statement anyway.')+'</div>';
+
+  var f=[];
+  if(deductions>dep*0.5&&deductions>0) f.push(['amber','You are withholding more than half the deposit','Large deductions are the most likely to be disputed. Make sure every line has a receipt or written estimate, and that none of it is ordinary wear and tear.']);
+  if(deds.some(function(d){return !d.desc&&(+d.cost>0);})) f.push(['red','A deduction has no description','An unnamed charge is unenforceable. Describe what was damaged and what you did about it.']);
+  if(deds.some(function(d){return d.life&&!d.age&&(+d.cost>0);})) f.push(['amber','An item has a useful life but no age set','Without the age, the calculator is charging full replacement cost. That is the most commonly overturned deduction.']);
+  if(refund<0) f.push(['amber','Deductions exceed the deposit','Recovering the balance usually means small claims court, and there you will need the move-in record, the move-out record, receipts and the dated statement.']);
+
+  $('flags').innerHTML=f.map(function(x){
+    var c=x[0]==='red'?['var(--red-bg)','var(--red-bd)','var(--red)']:['var(--amber-bg)','var(--amber-bd)','var(--amber)'];
+    return '<div class="card no-print" style="background:'+c[0]+';border-color:'+c[1]+';margin-bottom:12px">'
+      +'<h4 style="color:'+c[2]+';margin-bottom:6px;font-size:14px">'+x[1]+'</h4>'
+      +'<p style="font-size:13.5px;margin:0">'+x[2]+'</p></div>';
+  }).join('');
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  buildSidebar();
+  $('today').textContent=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  ['dep','unpaid','interest','tenancyYrs'].forEach(function(i){ $(i).addEventListener('input',calc); });
+  addDed('Carpet cleaning &mdash; pet stains in bedroom',350);
+  addDed('Replace broken bathroom mirror',180);
+});
+</script>
 </body>
 </html>
