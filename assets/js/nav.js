@@ -167,21 +167,39 @@ function lkWipe(keepDemo) {
   } catch (e) {}
 }
 
+var LK_SEED_NAMES = ['John Martinez','Sarah Johnson','Mike Chen','Lisa Park','Bob Thompson','Emma Davis'];
+
+function lkIsDemo() {
+  if (lk.get('isDemo')) return true;
+  var u = lk.get('units');
+  if (!u || !u.length) return false;
+  var hits = 0;
+  u.forEach(function(x) { if (LK_SEED_NAMES.indexOf(x.tenant) !== -1) hits++; });
+  return hits >= 3;
+}
+
 function demoBanner(mountId) {
   var el = document.getElementById(mountId || 'demo-banner');
   if (!el) return;
-  if (!lk.get('isDemo')) { el.innerHTML = ''; return; }
-  el.innerHTML = '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;'
-    + 'background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r-lg);'
-    + 'padding:13px 16px;margin-bottom:20px;">'
-    + '<div style="flex:1;min-width:240px;">'
-    + '<strong style="font-size:14px;color:var(--amber);font-family:var(--font-d);">You are looking at sample data.</strong>'
-    + '<p style="font-size:13.5px;margin:2px 0 0;">These tenants and units are examples so you can see how the tools work. '
-    + 'Clear them before entering anything real.</p></div>'
-    + '<button id="lk-clear-demo" class="btn btn-sm" style="background:var(--amber);color:#fff;border:none;white-space:nowrap;">Clear sample data</button>'
-    + '</div>';
+  var demo = lkIsDemo();
+  el.innerHTML = demo
+    ? '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;'
+      + 'background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r-lg);'
+      + 'padding:13px 16px;margin-bottom:20px;">'
+      + '<div style="flex:1;min-width:240px;">'
+      + '<strong style="font-size:14px;color:var(--amber);font-family:var(--font-d);">You are looking at sample data.</strong>'
+      + '<p style="font-size:13.5px;margin:2px 0 0;">These tenants and units are examples so you can see how the tools work. '
+      + 'Clear them before entering anything real.</p></div>'
+      + '<button id="lk-clear-demo" class="btn btn-sm" style="background:var(--amber);color:#fff;border:none;white-space:nowrap;">Clear sample data</button>'
+      + '</div>'
+    : '<div style="text-align:right;margin-bottom:12px;">'
+      + '<button id="lk-clear-demo" class="btn btn-ghost btn-xs" style="color:var(--txt3);">Reset all data</button></div>';
+
   document.getElementById('lk-clear-demo').addEventListener('click', function() {
-    if (!confirm('Remove all sample tenants, units, expenses and maintenance records? This cannot be undone.')) return;
+    var msg = demo
+      ? 'Remove all sample tenants, units, expenses and maintenance records? This cannot be undone.'
+      : 'Erase everything you have entered into LandlordKit on this device? This cannot be undone.';
+    if (!confirm(msg)) return;
     lkWipe(true);
     location.reload();
   });

@@ -21,6 +21,7 @@
 <div class="app-layout">
   <aside class="sidebar"><div id="sidebar-root"></div></aside>
   <main class="main-content">
+    <div id="demo-banner"></div>
 
     <div class="page-header" style="margin:-32px -32px 24px;padding:20px 32px;">
       <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> &rsaquo; Expenses</div>
@@ -313,6 +314,7 @@ function seedExpenses() {
 
 document.addEventListener('DOMContentLoaded', function() {
   buildSidebar();
+  demoBanner('demo-banner');
   seedExpenses();
   initFilters();
   renderAll();
