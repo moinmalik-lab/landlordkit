@@ -151,4 +151,40 @@ function showModal(title, bodyHtml, onSave, saveLabel) {
   return overlay;
 }
 
+
+/* ---- Demo data banner + reset ---- */
+var LK_KEYS = ['units','tenants','expenses','maintenance','inspections','contractors','isDemo'];
+
+function lkWipe(keepDemo) {
+  try {
+    var kill = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k && k.indexOf('lk_') === 0) kill.push(k);
+    }
+    kill.forEach(function(k) { localStorage.removeItem(k); });
+    if (keepDemo) localStorage.setItem('lk_blank', 'true');
+  } catch (e) {}
+}
+
+function demoBanner(mountId) {
+  var el = document.getElementById(mountId || 'demo-banner');
+  if (!el) return;
+  if (!lk.get('isDemo')) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;'
+    + 'background:var(--amber-bg);border:1px solid var(--amber-bd);border-radius:var(--r-lg);'
+    + 'padding:13px 16px;margin-bottom:20px;">'
+    + '<div style="flex:1;min-width:240px;">'
+    + '<strong style="font-size:14px;color:var(--amber);font-family:var(--font-d);">You are looking at sample data.</strong>'
+    + '<p style="font-size:13.5px;margin:2px 0 0;">These tenants and units are examples so you can see how the tools work. '
+    + 'Clear them before entering anything real.</p></div>'
+    + '<button id="lk-clear-demo" class="btn btn-sm" style="background:var(--amber);color:#fff;border:none;white-space:nowrap;">Clear sample data</button>'
+    + '</div>';
+  document.getElementById('lk-clear-demo').addEventListener('click', function() {
+    if (!confirm('Remove all sample tenants, units, expenses and maintenance records? This cannot be undone.')) return;
+    lkWipe(true);
+    location.reload();
+  });
+}
+
 document.addEventListener('DOMContentLoaded', function() { buildNav(); });

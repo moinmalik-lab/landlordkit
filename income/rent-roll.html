@@ -152,6 +152,8 @@ var MONTHS = ['January','February','March','April','May','June','July','August',
 /* ---- SEED DATA ---- */
 function seedData() {
   if (lk.get('units')) return;
+  if (lk.get('blank')) return;
+  lk.set('isDemo', true);
   lk.set('units', [
     {id:'u1',unit:'101',prop:'oak',propLabel:'123 Oak St',tenant:'John Martinez',initials:'JM',avatarBg:'#dbeafe',rent:1200,dueDay:1,vacant:false},
     {id:'u2',unit:'102',prop:'oak',propLabel:'123 Oak St',tenant:'Sarah Johnson',initials:'SJ',avatarBg:'#fce7f3',rent:1450,dueDay:1,vacant:false},

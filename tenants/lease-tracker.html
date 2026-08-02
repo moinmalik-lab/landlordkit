@@ -28,6 +28,7 @@
       <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Every lease, sorted by what expires soonest. Renew in one click.</p>
     </div>
 
+    <div id="demo-banner"></div>
     <div id="ltAlerts"></div>
     <div class="kpi-grid mb-6" id="ltKpis"></div>
 
@@ -193,6 +194,7 @@ document.addEventListener('DOMContentLoaded',function(){
       b.classList.add('active'); render();
     });
   });
+  demoBanner('demo-banner');
   alerts(); kpis(); render();
 });
 </script>

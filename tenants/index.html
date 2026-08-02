@@ -36,6 +36,8 @@
       <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Contact details, lease dates, deposits and notes for every tenant. Pulled from your rent roll — nothing to re-enter.</p>
     </div>
 
+    <div id="demo-banner"></div>
+
     <div class="kpi-grid mb-6" id="tnKpis"></div>
 
     <div class="toolbar mb-4">
@@ -44,7 +46,7 @@
       </div>
       <div class="flex gap-2">
         <input id="tnSearch" placeholder="Search name or unit&hellip;" style="padding:8px 12px;border:1.5px solid var(--border2);border-radius:var(--r);font-size:14px;width:200px;">
-        <a href="../income/rent-roll.html" class="btn btn-ghost btn-sm">Add a unit &rarr;</a>
+        <button class="btn btn-primary btn-sm" onclick="addT()">+ Add tenant</button>
       </div>
     </div>
 
@@ -52,7 +54,8 @@
     <div id="tnEmpty" class="empty-state hidden">
       <div class="empty-icon">&#128101;</div>
       <h3>No tenants match</h3>
-      <p>Try a different filter, or add units in the rent roll.</p>
+      <p id="tnEmptyMsg">Try a different filter, or add your first tenant.</p>
+      <button class="btn btn-primary mt-4" onclick="addT()">+ Add tenant</button>
     </div>
 
     <div class="card mt-8" style="background:var(--blue-bg);border-color:var(--blue-bd);">
@@ -138,8 +141,8 @@ function render(){
         +'<div class="tn-unit">Unit '+esc(u.unit)+' &middot; '+esc(u.propLabel||'')+'</div></div>'
       +'</div>'
       +'<div class="tn-row"><span>Rent</span><span class="font-mono">'+fmt(u.rent)+'/mo</span></div>'
-      +'<div class="tn-row"><span>Phone</span><span>'+esc(t.phone)+'</span></div>'
-      +'<div class="tn-row"><span>Email</span><span style="font-size:12px">'+esc(t.email)+'</span></div>'
+      +'<div class="tn-row"><span>Phone</span><span>'+(esc(t.phone)||'&mdash;')+'</span></div>'
+      +'<div class="tn-row"><span>Email</span><span style="font-size:12px">'+(esc(t.email)||'&mdash;')+'</span></div>'
       +'<div class="tn-row"><span>Deposit</span><span class="font-mono">'+(t.deposit?fmt(+t.deposit):'&mdash;')+'</span></div>'
       +'<div class="tn-row"><span>Lease</span><span style="font-size:12px">'+fmtD(t.leaseStart)+' &rarr; '+fmtD(t.leaseEnd)+'</span></div>'
       +'<div style="margin-top:12px"><div class="mini-lab">'+leaseTxt+'</div>'
@@ -182,9 +185,80 @@ function editT(id){
     },'Save details');
 }
 
+
+var AVBG=['#dbeafe','#fce7f3','#d1fae5','#ede9fe','#fef3c7','#fee2e2','#e0f2fe'];
+function initials(n){
+  var p=n.trim().split(/\s+/);
+  return ((p[0]||'')[0]||'').toUpperCase()+((p[1]||'')[0]||'').toUpperCase();
+}
+function propOpts(sel){
+  var seen={},out='';
+  units().forEach(function(u){ if(u.prop&&!seen[u.prop]){seen[u.prop]=1;
+    out+='<option value="'+esc(u.prop)+'|'+esc(u.propLabel||u.prop)+'"'+(sel===u.prop?' selected':'')+'>'+esc(u.propLabel||u.prop)+'</option>';} });
+  return out+'<option value="__new">+ New property&hellip;</option>';
+}
+
+function addT(){
+  showModal('Add tenant',
+    '<div class="form-group"><label for="aName">Tenant name</label>'
+    +'<input id="aName" class="w-full" placeholder="Full name"></div>'
+    +'<div class="grid-2" style="gap:12px">'
+      +'<div class="form-group"><label for="aProp">Property</label><select id="aProp" class="w-full">'+propOpts()+'</select></div>'
+      +'<div class="form-group"><label for="aUnit">Unit number</label><input id="aUnit" class="w-full" placeholder="101"></div>'
+    +'</div>'
+    +'<div class="form-group hidden" id="aNewWrap"><label for="aNewProp">New property address</label>'
+      +'<input id="aNewProp" class="w-full" placeholder="123 Oak St"></div>'
+    +'<div class="grid-2" style="gap:12px">'
+      +'<div class="form-group"><label for="aRent">Monthly rent</label><input id="aRent" type="number" class="w-full" placeholder="1200"></div>'
+      +'<div class="form-group"><label for="aDue">Rent due day</label><input id="aDue" type="number" min="1" max="31" value="1" class="w-full"></div>'
+      +'<div class="form-group"><label for="aPhone">Phone</label><input id="aPhone" type="tel" class="w-full" placeholder="(555) 123-4567"></div>'
+      +'<div class="form-group"><label for="aEmail">Email</label><input id="aEmail" type="email" class="w-full" placeholder="name@email.com"></div>'
+      +'<div class="form-group"><label for="aLS">Lease start</label><input id="aLS" type="date" class="w-full"></div>'
+      +'<div class="form-group"><label for="aLE">Lease end</label><input id="aLE" type="date" class="w-full"></div>'
+      +'<div class="form-group"><label for="aDep">Security deposit</label><input id="aDep" type="number" class="w-full" placeholder="1200"></div>'
+      +'<div class="form-group"><label for="aEC">Emergency contact</label><input id="aEC" class="w-full" placeholder="Name and phone"></div>'
+    +'</div>'
+    +'<div class="form-group"><label for="aNotes">Notes</label>'
+      +'<textarea id="aNotes" rows="2" class="w-full" placeholder="Pets, parking, anything agreed."></textarea></div>'
+    +'<p class="form-hint">Only name, unit and rent are required. This creates the unit in your rent roll too.</p>',
+    function(){
+      var name=$('aName').value.trim(), unit=$('aUnit').value.trim(), rent=parseFloat($('aRent').value)||0;
+      if(!name){ toast('Tenant name is required','error'); return false; }
+      if(!unit){ toast('Unit number is required','error'); return false; }
+      var pv=$('aProp').value, prop, label;
+      if(pv==='__new'||!pv){
+        label=$('aNewProp').value.trim();
+        if(!label){ toast('Enter the property address','error'); return false; }
+        prop=label.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,12)||'p'+Date.now();
+      } else { var parts=pv.split('|'); prop=parts[0]; label=parts[1]; }
+      var ls=$('aLS').value, le=$('aLE').value;
+      if(ls&&le&&parseD(le)<=parseD(ls)){ toast('Lease end must be after lease start','error'); return false; }
+      var us=units();
+      if(us.some(function(u){return u.prop===prop && u.unit===unit;})){
+        toast('That unit already exists at this property','error'); return false;
+      }
+      var id='u'+Date.now();
+      us.push({id:id,unit:unit,prop:prop,propLabel:label,tenant:name,
+        initials:initials(name),avatarBg:AVBG[us.length%AVBG.length],
+        rent:rent,dueDay:parseInt($('aDue').value)||1,vacant:false});
+      lk.set('units',us);
+      var d=tdata();
+      d[id]={phone:$('aPhone').value.trim(),email:$('aEmail').value.trim(),
+        leaseStart:ls,leaseEnd:le,deposit:$('aDep').value,
+        emergency:$('aEC').value.trim(),notes:$('aNotes').value.trim()};
+      saveT(d);
+      filters(); kpis(); render(); toast(name+' added');
+    },'Add tenant');
+  $('aProp').addEventListener('change',function(){
+    $('aNewWrap').classList.toggle('hidden',this.value!=='__new');
+  });
+  if(!units().length){ $('aProp').value='__new'; $('aNewWrap').classList.remove('hidden'); }
+}
+
 document.addEventListener('DOMContentLoaded',function(){
   buildSidebar('tenants');
   $('tnSearch').addEventListener('input',function(e){ state.q=e.target.value; render(); });
+  demoBanner('demo-banner');
   filters(); kpis(); render();
 });
 </script>
