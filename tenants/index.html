@@ -4,30 +4,189 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Tenant profiles — LandlordKit</title>
+<meta name="description" content="Keep contact details, lease dates, deposits and notes for every tenant in one place. Free, private, runs in your browser.">
 <link rel="stylesheet" href="../assets/css/main.css">
+<style>
+.tn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px}
+.tn-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;box-shadow:var(--sh)}
+.tn-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.tn-av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;color:var(--txt);flex-shrink:0}
+.tn-name{font-family:var(--font-d);font-weight:600;font-size:15px;line-height:1.3}
+.tn-unit{font-size:12.5px;color:var(--txt3);margin-top:1px}
+.tn-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border);gap:10px}
+.tn-row:last-of-type{border-bottom:none}
+.tn-row span:first-child{color:var(--txt3);flex-shrink:0}
+.tn-row span:last-child{font-weight:500;text-align:right;word-break:break-word}
+.tn-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:4px}
+.tn-fill{height:100%;border-radius:3px}
+.tn-acts{display:flex;gap:8px;margin-top:14px}
+.tn-acts .btn{flex:1;justify-content:center;text-align:center}
+.mini-lab{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);font-weight:600;margin-bottom:4px}
+</style>
 </head>
 <body>
 <div id="nav-root"></div>
 <div class="app-layout">
   <aside class="sidebar"><div id="sidebar-root"></div></aside>
   <main class="main-content">
+
     <div class="page-header" style="margin:-32px -32px 24px;padding:20px 32px;">
       <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> &rsaquo; Tenants</div>
       <h1 style="font-size:1.6rem;margin-top:6px;">Tenant profiles</h1>
-      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Complete tenant profiles linked to leases, payment history, and records.</p>
+      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Contact details, lease dates, deposits and notes for every tenant. Pulled from your rent roll — nothing to re-enter.</p>
     </div>
-    <div class="card" style="text-align:center;padding:60px 40px;">
-      <div style="font-size:48px;margin-bottom:16px;">👥</div>
-      <h2 style="margin-bottom:12px;">Tenant profiles</h2>
-      <p style="max-width:440px;margin:0 auto 24px;font-size:15px;">Complete tenant profiles linked to leases, payment history, and records. This page is in active development — full functionality coming in Phase 2.</p>
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-        <a href="../income/rent-roll.html" class="btn btn-primary">Open rent roll &rarr;</a>
-        <a href="../calculators/break-even.html" class="btn btn-ghost">Break-even calculator</a>
+
+    <div class="kpi-grid mb-6" id="tnKpis"></div>
+
+    <div class="toolbar mb-4">
+      <div class="toolbar-left">
+        <div class="filter-group" id="tnFilters"></div>
+      </div>
+      <div class="flex gap-2">
+        <input id="tnSearch" placeholder="Search name or unit&hellip;" style="padding:8px 12px;border:1.5px solid var(--border2);border-radius:var(--r);font-size:14px;width:200px;">
+        <a href="../income/rent-roll.html" class="btn btn-ghost btn-sm">Add a unit &rarr;</a>
       </div>
     </div>
+
+    <div id="tnGrid" class="tn-grid"></div>
+    <div id="tnEmpty" class="empty-state hidden">
+      <div class="empty-icon">&#128101;</div>
+      <h3>No tenants match</h3>
+      <p>Try a different filter, or add units in the rent roll.</p>
+    </div>
+
+    <div class="card mt-8" style="background:var(--blue-bg);border-color:var(--blue-bd);">
+      <h4 style="margin-bottom:8px;">Why keep this record</h4>
+      <p style="font-size:14px;">If a deposit dispute ever reaches a court or a mediator, the landlord with dated records is the one who prevails. Lease dates, deposit amounts and a written note of what was agreed are the three things people wish they had written down and didn't. Everything here stays on this device.</p>
+    </div>
+
   </main>
 </div>
+
 <script src="../assets/js/nav.js"></script>
-<script>document.addEventListener('DOMContentLoaded',()=>{ buildSidebar('tenants'); });</script>
+<script>
+var state={prop:'all',q:''};
+
+function units(){ return lk.get('units')||[]; }
+function tdata(){ return lk.get('tenants')||{}; }
+function saveT(d){ lk.set('tenants',d); }
+function occupied(){ return units().filter(function(u){return !u.vacant && u.tenant;}); }
+
+function daysBetween(a,b){ return Math.round((b-a)/86400000); }
+function parseD(s){ if(!s) return null; var d=new Date(s+'T00:00:00'); return isNaN(d.getTime())?null:d; }
+function fmtD(s){ var d=parseD(s); return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'&mdash;'; }
+
+function leaseInfo(t){
+  var s=parseD(t.leaseStart), e=parseD(t.leaseEnd);
+  if(!s||!e) return null;
+  var now=new Date(); now.setHours(0,0,0,0);
+  var total=daysBetween(s,e); if(total<=0) return null;
+  var pct=Math.max(0,Math.min(100,Math.round(daysBetween(s,now)/total*100)));
+  return {pct:pct,left:daysBetween(now,e),total:total};
+}
+
+function kpis(){
+  var occ=occupied(), d=tdata(), dep=0, expiring=0, missing=0;
+  occ.forEach(function(u){
+    var t=d[u.id]||{};
+    dep+=(+t.deposit||0);
+    var li=leaseInfo(t);
+    if(li && li.left>=0 && li.left<=60) expiring++;
+    if(!t.leaseEnd || !t.phone) missing++;
+  });
+  $('tnKpis').innerHTML=[
+    ['Active tenants',occ.length,'across '+units().length+' units'],
+    ['Deposits held',fmt(dep),'refundable on move-out'],
+    ['Leases expiring',expiring,'within 60 days'],
+    ['Incomplete records',missing,'missing phone or lease end']
+  ].map(function(k){
+    return '<div class="kpi-card"><div class="kpi-label">'+k[0]+'</div><div class="kpi-value">'+k[1]+'</div><div class="kpi-sub">'+k[2]+'</div></div>';
+  }).join('');
+}
+
+function filters(){
+  var props={};
+  units().forEach(function(u){ if(u.prop) props[u.prop]=u.propLabel||u.prop; });
+  var html='<button class="filter-btn'+(state.prop==='all'?' active':'')+'" data-p="all">All properties</button>';
+  Object.keys(props).forEach(function(p){
+    html+='<button class="filter-btn'+(state.prop===p?' active':'')+'" data-p="'+p+'">'+props[p]+'</button>';
+  });
+  $('tnFilters').innerHTML=html;
+  Array.prototype.forEach.call($('tnFilters').querySelectorAll('.filter-btn'),function(b){
+    b.addEventListener('click',function(){ state.prop=b.dataset.p; filters(); render(); });
+  });
+}
+
+function esc(s){ return String(s||'').replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];}); }
+
+function render(){
+  var d=tdata(), q=state.q.toLowerCase();
+  var list=occupied().filter(function(u){
+    if(state.prop!=='all' && u.prop!==state.prop) return false;
+    if(q && (u.tenant+' '+u.unit).toLowerCase().indexOf(q)===-1) return false;
+    return true;
+  });
+  $('tnEmpty').classList.toggle('hidden',list.length>0);
+  $('tnGrid').innerHTML=list.map(function(u){
+    var t=d[u.id]||{}, li=leaseInfo(t);
+    var barCol=!li?'var(--border2)':li.left<0?'var(--red)':li.left<=60?'var(--amber)':'var(--green)';
+    var leaseTxt=!li?'No lease dates set':li.left<0?'Expired '+Math.abs(li.left)+' days ago':li.left+' days remaining';
+    return '<div class="tn-card">'
+      +'<div class="tn-top">'
+        +'<div class="tn-av" style="background:'+(u.avatarBg||'#e4e0da')+'">'+esc(u.initials||'?')+'</div>'
+        +'<div style="min-width:0;flex:1"><div class="tn-name">'+esc(u.tenant)+'</div>'
+        +'<div class="tn-unit">Unit '+esc(u.unit)+' &middot; '+esc(u.propLabel||'')+'</div></div>'
+      +'</div>'
+      +'<div class="tn-row"><span>Rent</span><span class="font-mono">'+fmt(u.rent)+'/mo</span></div>'
+      +'<div class="tn-row"><span>Phone</span><span>'+esc(t.phone)+'</span></div>'
+      +'<div class="tn-row"><span>Email</span><span style="font-size:12px">'+esc(t.email)+'</span></div>'
+      +'<div class="tn-row"><span>Deposit</span><span class="font-mono">'+(t.deposit?fmt(+t.deposit):'&mdash;')+'</span></div>'
+      +'<div class="tn-row"><span>Lease</span><span style="font-size:12px">'+fmtD(t.leaseStart)+' &rarr; '+fmtD(t.leaseEnd)+'</span></div>'
+      +'<div style="margin-top:12px"><div class="mini-lab">'+leaseTxt+'</div>'
+        +'<div class="tn-bar"><div class="tn-fill" style="width:'+(li?li.pct:0)+'%;background:'+barCol+'"></div></div></div>'
+      +(t.notes?'<p style="font-size:12.5px;margin-top:10px;color:var(--txt2);border-left:2px solid var(--border2);padding-left:8px">'+esc(t.notes)+'</p>':'')
+      +'<div class="tn-acts">'
+        +'<button class="btn btn-ghost btn-sm" onclick="editT(\''+u.id+'\')">Edit details</button>'
+        +'<a class="btn btn-ghost btn-sm" href="lease-tracker.html">Lease</a>'
+      +'</div></div>';
+  }).join('');
+}
+
+function fld(l,id,v,type,ph){
+  return '<div class="form-group"><label for="'+id+'">'+l+'</label>'
+    +'<input id="'+id+'" type="'+(type||'text')+'" value="'+esc(v)+'" placeholder="'+(ph||'')+'" class="w-full"></div>';
+}
+
+function editT(id){
+  var u=units().filter(function(x){return x.id===id;})[0]; if(!u) return;
+  var d=tdata(), t=d[id]||{};
+  showModal('Details &mdash; '+esc(u.tenant),
+    '<div class="grid-2" style="gap:12px">'
+    +fld('Phone','tPhone',t.phone,'tel','(555) 123-4567')
+    +fld('Email','tEmail',t.email,'email','name@email.com')
+    +fld('Lease start','tLS',t.leaseStart,'date')
+    +fld('Lease end','tLE',t.leaseEnd,'date')
+    +fld('Security deposit','tDep',t.deposit,'number','1200')
+    +fld('Emergency contact','tEC',t.emergency,'text','Name and phone')
+    +'</div>'
+    +'<div class="form-group"><label for="tNotes">Notes</label>'
+    +'<textarea id="tNotes" rows="3" class="w-full" placeholder="Pets, parking space, agreed repairs &mdash; anything you would want in writing later.">'+esc(t.notes)+'</textarea></div>'
+    +'<p class="form-hint">Stored only in this browser. Nothing is uploaded.</p>',
+    function(){
+      var ls=$('tLS').value, le=$('tLE').value;
+      if(ls&&le&&parseD(le)<=parseD(ls)){ toast('Lease end must be after lease start','error'); return false; }
+      d[id]={phone:$('tPhone').value.trim(),email:$('tEmail').value.trim(),
+        leaseStart:ls,leaseEnd:le,deposit:$('tDep').value,
+        emergency:$('tEC').value.trim(),notes:$('tNotes').value.trim()};
+      saveT(d); kpis(); render(); toast('Saved');
+    },'Save details');
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  buildSidebar('tenants');
+  $('tnSearch').addEventListener('input',function(e){ state.q=e.target.value; render(); });
+  filters(); kpis(); render();
+});
+</script>
 </body>
 </html>

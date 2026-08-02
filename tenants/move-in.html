@@ -3,31 +3,199 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Move-in record — LandlordKit</title>
+<title>Move-in / move-out record — LandlordKit</title>
+<meta name="description" content="Room-by-room condition record for move-in and move-out, with a printable version to sign. The document that decides deposit disputes.">
 <link rel="stylesheet" href="../assets/css/main.css">
+<style>
+.mi-room{border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:12px;overflow:hidden;background:var(--surface)}
+.mi-head{padding:11px 16px;background:var(--bg);font-family:var(--font-d);font-weight:600;font-size:14px;border-bottom:1px solid var(--border)}
+.mi-item{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.6fr;gap:10px;padding:9px 16px;align-items:center;border-bottom:1px solid var(--border)}
+.mi-item:last-child{border-bottom:none}
+.mi-item label{font-size:13.5px;color:var(--txt2)}
+.mi-item select,.mi-item input{padding:6px 9px;border:1.5px solid var(--border2);border-radius:6px;font-size:13px;width:100%}
+.mi-hd{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.6fr;gap:10px;padding:7px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt3);font-weight:600}
+.cond-good{border-color:var(--green-bd)!important;background:var(--green-bg)}
+.cond-fair{border-color:var(--amber-bd)!important;background:var(--amber-bg)}
+.cond-poor{border-color:var(--red-bd)!important;background:var(--red-bg)}
+@media print{
+  .nav,.sidebar,.toolbar,.no-print{display:none!important}
+  .app-layout{display:block}.main-content{padding:0}
+  .mi-room{break-inside:avoid;box-shadow:none}
+  body{background:#fff;font-size:12px}
+}
+@media(max-width:760px){.mi-item,.mi-hd{grid-template-columns:1fr 1fr}}
+</style>
 </head>
 <body>
 <div id="nav-root"></div>
 <div class="app-layout">
   <aside class="sidebar"><div id="sidebar-root"></div></aside>
   <main class="main-content">
-    <div class="page-header" style="margin:-32px -32px 24px;padding:20px 32px;">
+
+    <div class="page-header no-print" style="margin:-32px -32px 24px;padding:20px 32px;">
       <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> &rsaquo; Tenants</div>
-      <h1 style="font-size:1.6rem;margin-top:6px;">Move-in record</h1>
-      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Room-by-room condition record signed at move-in. Protects deposit return.</p>
+      <h1 style="font-size:1.6rem;margin-top:6px;">Move-in / move-out record</h1>
+      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Room-by-room condition, recorded at both ends of the tenancy. This is the document that decides deposit disputes.</p>
     </div>
-    <div class="card" style="text-align:center;padding:60px 40px;">
-      <div style="font-size:48px;margin-bottom:16px;">🏠</div>
-      <h2 style="margin-bottom:12px;">Move-in record</h2>
-      <p style="max-width:440px;margin:0 auto 24px;font-size:15px;">Room-by-room condition record signed at move-in. Protects deposit return. This page is in active development — full functionality coming in Phase 2.</p>
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-        <a href="../income/rent-roll.html" class="btn btn-primary">Open rent roll &rarr;</a>
-        <a href="../calculators/break-even.html" class="btn btn-ghost">Break-even calculator</a>
+
+    <div class="toolbar mb-4 no-print">
+      <div class="toolbar-left flex gap-2" style="flex-wrap:wrap;align-items:center">
+        <select id="miUnit" style="padding:8px 12px;border:1.5px solid var(--border2);border-radius:var(--r);font-size:14px;min-width:190px"></select>
+        <div class="filter-group">
+          <button class="filter-btn active" data-p="in">Move-in</button>
+          <button class="filter-btn" data-p="out">Move-out</button>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">Print / save PDF</button>
+        <button class="btn btn-primary btn-sm" onclick="saveAll()">Save record</button>
       </div>
     </div>
+
+    <div class="card mb-4" id="miMeta"></div>
+
+    <div id="miRooms"></div>
+
+    <div class="card mt-6" id="miSummary"></div>
+
+    <div class="card mt-4">
+      <h4 style="margin-bottom:8px;">Signatures</h4>
+      <div class="grid-2" style="gap:28px;margin-top:18px">
+        <div><div style="border-bottom:1px solid var(--txt3);height:34px"></div>
+          <p style="font-size:12px;margin-top:5px;color:var(--txt3)">Landlord signature &amp; date</p></div>
+        <div><div style="border-bottom:1px solid var(--txt3);height:34px"></div>
+          <p style="font-size:12px;margin-top:5px;color:var(--txt3)">Tenant signature &amp; date</p></div>
+      </div>
+    </div>
+
+    <div class="card mt-8 no-print" style="background:var(--blue-bg);border-color:var(--blue-bd);">
+      <h4 style="margin-bottom:8px;">Do this on day one, not on the way out</h4>
+      <p style="font-size:14px;">Deposit disputes are decided by whoever can show the condition at the start. A signed move-in record, dated and with photographs attached, ends the argument before it begins. Most states also require you to return a deposit within 14 to 30 days with an itemised list of deductions &mdash; and several impose penalties of two to three times the deposit for missing that deadline. Print two copies, both parties sign, tenant keeps one.</p>
+    </div>
+
   </main>
 </div>
+
 <script src="../assets/js/nav.js"></script>
-<script>document.addEventListener('DOMContentLoaded',()=>{ buildSidebar('tenants'); });</script>
+<script>
+var ROOMS=[
+  ['Living room',['Walls &amp; ceiling','Flooring','Windows &amp; blinds','Doors &amp; locks','Light fixtures','Outlets &amp; switches']],
+  ['Kitchen',['Cabinets &amp; drawers','Countertops','Sink &amp; faucet','Refrigerator','Range / oven','Dishwasher','Flooring','Exhaust fan']],
+  ['Bathroom',['Toilet','Sink &amp; vanity','Tub / shower','Tiles &amp; grout','Mirror &amp; fittings','Ventilation','Flooring']],
+  ['Bedrooms',['Walls &amp; ceiling','Flooring','Closets','Windows &amp; blinds','Doors &amp; locks','Light fixtures']],
+  ['Systems &amp; safety',['Heating','Air conditioning','Water heater','Smoke detectors','Carbon monoxide detector','Electrical panel','Plumbing &mdash; visible leaks']],
+  ['Exterior &amp; other',['Entry door &amp; lock','Balcony / patio','Garage / parking','Yard &amp; landscaping','Mailbox','Keys issued']]
+];
+var phase='in', curUnit='';
+
+function units(){ return lk.get('units')||[]; }
+function all(){ return lk.get('inspections')||{}; }
+function key(){ return curUnit+'_'+phase; }
+function esc(s){ return String(s||'').replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];}); }
+function slug(s){ return s.replace(/[^a-z0-9]/gi,'').toLowerCase(); }
+
+function fillUnits(){
+  var us=units();
+  $('miUnit').innerHTML=us.map(function(u){
+    return '<option value="'+u.id+'">Unit '+esc(u.unit)+' &mdash; '+esc(u.propLabel||'')+(u.tenant?' ('+esc(u.tenant)+')':' (vacant)')+'</option>';
+  }).join('')||'<option value="">No units yet</option>';
+  curUnit=us.length?us[0].id:'';
+}
+
+function meta(){
+  var u=units().filter(function(x){return x.id===curUnit;})[0]||{};
+  var rec=all()[key()]||{};
+  var td=(lk.get('tenants')||{})[curUnit]||{};
+  $('miMeta').innerHTML='<div class="grid-4" style="gap:14px">'
+    +'<div><div class="kpi-label">Property</div><div class="font-medium">'+esc(u.propLabel||'&mdash;')+'</div></div>'
+    +'<div><div class="kpi-label">Unit</div><div class="font-medium">'+esc(u.unit||'&mdash;')+'</div></div>'
+    +'<div><div class="kpi-label">Tenant</div><div class="font-medium">'+esc(u.tenant||'Vacant')+'</div></div>'
+    +'<div class="form-group" style="margin:0"><label for="miDate">Inspection date</label>'
+      +'<input id="miDate" type="date" value="'+(rec.date||new Date().toISOString().slice(0,10))+'" class="w-full"></div>'
+    +'</div>'
+    +'<p style="font-size:12.5px;color:var(--txt3);margin-top:12px">'
+    +(phase==='in'?'Move-in inspection. Record the condition the tenant is receiving.':'Move-out inspection. Compare against the move-in record before deducting anything from the deposit.')
+    +(td.deposit?' Deposit held: <strong>'+fmt(+td.deposit)+'</strong>.':'')+'</p>';
+}
+
+function render(){
+  var rec=all()[key()]||{items:{}};
+  var items=rec.items||{};
+  $('miRooms').innerHTML=ROOMS.map(function(r){
+    var rid=slug(r[0]);
+    return '<div class="mi-room"><div class="mi-head">'+r[0]+'</div>'
+      +'<div class="mi-hd"><span>Item</span><span>Condition</span><span>Clean</span><span>Notes</span></div>'
+      +r[1].map(function(it){
+        var id=rid+'_'+slug(it), v=items[id]||{};
+        return '<div class="mi-item"><label>'+it+'</label>'
+          +'<select id="c_'+id+'" class="cond-'+(v.cond||'good')+'" onchange="condColor(this)">'
+            +['good','fair','poor'].map(function(c){return '<option value="'+c+'"'+(v.cond===c?' selected':'')+'>'+c.charAt(0).toUpperCase()+c.slice(1)+'</option>';}).join('')
+          +'</select>'
+          +'<select id="k_'+id+'">'
+            +['Yes','No','N/A'].map(function(c){return '<option'+(v.clean===c?' selected':'')+'>'+c+'</option>';}).join('')
+          +'</select>'
+          +'<input id="n_'+id+'" value="'+esc(v.note)+'" placeholder="Scratches, stains, missing&hellip;">'
+          +'</div>';
+      }).join('')
+      +'</div>';
+  }).join('');
+  summary();
+}
+
+function condColor(sel){ sel.className='cond-'+sel.value; summary(); }
+
+function collect(){
+  var items={};
+  ROOMS.forEach(function(r){
+    var rid=slug(r[0]);
+    r[1].forEach(function(it){
+      var id=rid+'_'+slug(it);
+      var c=$('c_'+id), k=$('k_'+id), n=$('n_'+id);
+      if(c) items[id]={cond:c.value,clean:k.value,note:n.value.trim()};
+    });
+  });
+  return items;
+}
+
+function summary(){
+  var items=collect(), g=0,f=0,p=0,notes=0;
+  Object.keys(items).forEach(function(k){
+    var v=items[k];
+    if(v.cond==='good')g++; else if(v.cond==='fair')f++; else p++;
+    if(v.note)notes++;
+  });
+  var tot=g+f+p;
+  $('miSummary').innerHTML='<h4 style="margin-bottom:12px">Condition summary</h4>'
+    +'<div class="grid-4" style="gap:14px">'
+    +'<div class="kpi-card" style="background:var(--green-bg);border-color:var(--green-bd)"><div class="kpi-label">Good</div><div class="kpi-value" style="color:var(--green)">'+g+'</div><div class="kpi-sub">of '+tot+' items</div></div>'
+    +'<div class="kpi-card" style="background:var(--amber-bg);border-color:var(--amber-bd)"><div class="kpi-label">Fair</div><div class="kpi-value" style="color:var(--amber)">'+f+'</div><div class="kpi-sub">wear noted</div></div>'
+    +'<div class="kpi-card" style="background:var(--red-bg);border-color:var(--red-bd)"><div class="kpi-label">Poor</div><div class="kpi-value" style="color:var(--red)">'+p+'</div><div class="kpi-sub">needs attention</div></div>'
+    +'<div class="kpi-card"><div class="kpi-label">Items with notes</div><div class="kpi-value">'+notes+'</div><div class="kpi-sub">written detail</div></div>'
+    +'</div>'
+    +(phase==='out'&&p>0?'<p style="font-size:13.5px;margin-top:14px;color:var(--txt2)">Before deducting for any item marked poor, check it against the move-in record. Normal wear and tear is not deductible in any state &mdash; faded paint and worn carpet from ordinary use are the landlord\'s cost, not the tenant\'s.</p>':'');
+}
+
+function saveAll(){
+  if(!curUnit){ toast('Add a unit in the rent roll first','error'); return; }
+  var a=all();
+  a[key()]={date:$('miDate').value,items:collect(),saved:new Date().toISOString()};
+  lk.set('inspections',a);
+  toast('Record saved for this unit');
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  buildSidebar('tenants');
+  fillUnits();
+  $('miUnit').addEventListener('change',function(e){ curUnit=e.target.value; meta(); render(); });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-p]'),function(b){
+    b.addEventListener('click',function(){
+      phase=b.dataset.p;
+      Array.prototype.forEach.call(document.querySelectorAll('[data-p]'),function(x){x.classList.remove('active');});
+      b.classList.add('active'); meta(); render();
+    });
+  });
+  meta(); render();
+});
+</script>
 </body>
 </html>

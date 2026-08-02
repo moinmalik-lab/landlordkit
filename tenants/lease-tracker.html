@@ -4,30 +4,197 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Lease tracker — LandlordKit</title>
+<meta name="description" content="See every lease expiry at a glance, with colour-coded alerts and one-click renewals. Free and private.">
 <link rel="stylesheet" href="../assets/css/main.css">
+<style>
+.lt-alert{border-radius:var(--r-lg);padding:16px 18px;margin-bottom:16px;border:1px solid}
+.lt-alert h4{margin-bottom:4px;font-size:14px}
+.lt-alert p{font-size:13.5px;margin:0}
+.lt-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;min-width:90px}
+.lt-fill{height:100%;border-radius:4px}
+.lt-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px;flex-shrink:0}
+.lt-when{font-size:12px;color:var(--txt3);margin-top:2px}
+</style>
 </head>
 <body>
 <div id="nav-root"></div>
 <div class="app-layout">
   <aside class="sidebar"><div id="sidebar-root"></div></aside>
   <main class="main-content">
+
     <div class="page-header" style="margin:-32px -32px 24px;padding:20px 32px;">
       <div class="page-breadcrumb"><a href="../index.html">LandlordKit</a> &rsaquo; Tenants</div>
       <h1 style="font-size:1.6rem;margin-top:6px;">Lease tracker</h1>
-      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Track lease start, end, renewal status, and rent across all tenants.</p>
+      <p style="font-size:14px;color:var(--txt3);margin-top:4px;">Every lease, sorted by what expires soonest. Renew in one click.</p>
     </div>
-    <div class="card" style="text-align:center;padding:60px 40px;">
-      <div style="font-size:48px;margin-bottom:16px;">📃</div>
-      <h2 style="margin-bottom:12px;">Lease tracker</h2>
-      <p style="max-width:440px;margin:0 auto 24px;font-size:15px;">Track lease start, end, renewal status, and rent across all tenants. This page is in active development — full functionality coming in Phase 2.</p>
-      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-        <a href="../income/rent-roll.html" class="btn btn-primary">Open rent roll &rarr;</a>
-        <a href="../calculators/break-even.html" class="btn btn-ghost">Break-even calculator</a>
+
+    <div id="ltAlerts"></div>
+    <div class="kpi-grid mb-6" id="ltKpis"></div>
+
+    <div class="toolbar mb-4">
+      <div class="toolbar-left">
+        <div class="filter-group" id="ltFilters">
+          <button class="filter-btn active" data-f="all">All leases</button>
+          <button class="filter-btn" data-f="expired">Expired</button>
+          <button class="filter-btn" data-f="soon">Expiring &lt; 60 days</button>
+          <button class="filter-btn" data-f="ok">Current</button>
+          <button class="filter-btn" data-f="none">No dates set</button>
+        </div>
+      </div>
+      <a href="index.html" class="btn btn-ghost btn-sm">Tenant profiles &rarr;</a>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr>
+            <th>Tenant</th><th>Unit</th><th>Lease start</th><th>Lease end</th>
+            <th>Status</th><th style="min-width:130px">Term elapsed</th>
+            <th class="text-right">Rent</th><th class="text-right">Action</th>
+          </tr></thead>
+          <tbody id="ltBody"></tbody>
+        </table>
       </div>
     </div>
+    <div id="ltEmpty" class="empty-state hidden">
+      <div class="empty-icon">&#128220;</div>
+      <h3>Nothing in this view</h3>
+      <p>Try another filter, or set lease dates on the tenant profiles page.</p>
+    </div>
+
+    <div class="grid-2 mt-8">
+      <div class="card" style="background:var(--amber-bg);border-color:var(--amber-bd);">
+        <h4 style="margin-bottom:8px;">Notice periods are not optional</h4>
+        <p style="font-size:14px;">Most states require 30 to 60 days' written notice before a rent increase or a decision not to renew. Miss the window and the lease usually rolls over on the existing terms, whether you meant it to or not. That's why the amber band here starts at 60 days.</p>
+      </div>
+      <div class="card" style="background:var(--green-bg);border-color:var(--green-bd);">
+        <h4 style="margin-bottom:8px;">Renewing beats re-letting</h4>
+        <p style="font-size:14px;">A turnover costs a month of vacancy, cleaning, listing time and screening. A renewal at a modest increase almost always nets more than a new tenant at a higher rent. Run the numbers in the <a href="../calculators/rental-yield.html">rental yield calculator</a> before deciding.</p>
+      </div>
+    </div>
+
   </main>
 </div>
+
 <script src="../assets/js/nav.js"></script>
-<script>document.addEventListener('DOMContentLoaded',()=>{ buildSidebar('tenants'); });</script>
+<script>
+var filt='all';
+function units(){ return lk.get('units')||[]; }
+function tdata(){ return lk.get('tenants')||{}; }
+function esc(s){ return String(s||'').replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];}); }
+function daysBetween(a,b){ return Math.round((b-a)/86400000); }
+function parseD(s){ if(!s) return null; var d=new Date(s+'T00:00:00'); return isNaN(d.getTime())?null:d; }
+function fmtD(s){ var d=parseD(s); return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'&mdash;'; }
+function iso(d){ return d.toISOString().slice(0,10); }
+
+function rows(){
+  var d=tdata(), now=new Date(); now.setHours(0,0,0,0);
+  return units().filter(function(u){return !u.vacant && u.tenant;}).map(function(u){
+    var t=d[u.id]||{}, s=parseD(t.leaseStart), e=parseD(t.leaseEnd);
+    var left=e?daysBetween(now,e):null;
+    var pct=null;
+    if(s&&e){ var tot=daysBetween(s,e); if(tot>0) pct=Math.max(0,Math.min(100,Math.round(daysBetween(s,now)/tot*100))); }
+    var band = left===null?'none':left<0?'expired':left<=60?'soon':'ok';
+    return {u:u,t:t,left:left,pct:pct,band:band};
+  }).sort(function(a,b){
+    if(a.left===null) return 1; if(b.left===null) return -1;
+    return a.left-b.left;
+  });
+}
+
+var BAND={
+  expired:{c:'var(--red)',bg:'var(--red-bg)',bd:'var(--red-bd)',label:'Expired'},
+  soon:{c:'var(--amber)',bg:'var(--amber-bg)',bd:'var(--amber-bd)',label:'Expiring soon'},
+  ok:{c:'var(--green)',bg:'var(--green-bg)',bd:'var(--green-bd)',label:'Current'},
+  none:{c:'var(--txt3)',bg:'var(--bg)',bd:'var(--border)',label:'No dates'}
+};
+
+function alerts(){
+  var r=rows(), ex=r.filter(function(x){return x.band==='expired';}), sn=r.filter(function(x){return x.band==='soon';});
+  var h='';
+  if(ex.length) h+='<div class="lt-alert" style="background:var(--red-bg);border-color:var(--red-bd)"><h4 style="color:var(--red)">'+ex.length+' lease'+(ex.length>1?'s have':' has')+' already expired</h4><p>'+ex.map(function(x){return esc(x.u.tenant)+' (unit '+esc(x.u.unit)+')';}).join(', ')+'. A tenant staying past the end date is usually month-to-month by default &mdash; check your state rules before treating it as anything else.</p></div>';
+  if(sn.length) h+='<div class="lt-alert" style="background:var(--amber-bg);border-color:var(--amber-bd)"><h4 style="color:var(--amber)">'+sn.length+' lease'+(sn.length>1?'s expire':' expires')+' within 60 days</h4><p>'+sn.map(function(x){return esc(x.u.tenant)+' in '+x.left+' days';}).join(', ')+'. If you intend to raise the rent or not renew, the notice usually has to go out now.</p></div>';
+  $('ltAlerts').innerHTML=h;
+}
+
+function kpis(){
+  var r=rows();
+  var cnt=function(b){ return r.filter(function(x){return x.band===b;}).length; };
+  var annual=r.filter(function(x){return x.band!=='expired';}).reduce(function(a,x){return a+(+x.u.rent||0)*12;},0);
+  $('ltKpis').innerHTML=[
+    ['Active leases',r.length,'tenanted units'],
+    ['Expiring &lt; 60 days',cnt('soon'),'notice window open'],
+    ['Expired',cnt('expired'),'needs attention'],
+    ['Annual rent secured',fmt(annual),'current leases at present rent']
+  ].map(function(k){
+    return '<div class="kpi-card"><div class="kpi-label">'+k[0]+'</div><div class="kpi-value">'+k[1]+'</div><div class="kpi-sub">'+k[2]+'</div></div>';
+  }).join('');
+}
+
+function render(){
+  var r=rows().filter(function(x){ return filt==='all'||x.band===filt; });
+  $('ltEmpty').classList.toggle('hidden',r.length>0);
+  $('ltBody').innerHTML=r.map(function(x){
+    var B=BAND[x.band];
+    var when = x.left===null?'':x.left<0?Math.abs(x.left)+' days ago':x.left+' days left';
+    return '<tr>'
+      +'<td><div class="flex-center"><span class="lt-dot" style="background:'+B.c+'"></span><div><div class="font-medium">'+esc(x.u.tenant)+'</div><div class="lt-when">'+esc(x.u.propLabel||'')+'</div></div></div></td>'
+      +'<td class="font-mono">'+esc(x.u.unit)+'</td>'
+      +'<td>'+fmtD(x.t.leaseStart)+'</td>'
+      +'<td>'+fmtD(x.t.leaseEnd)+'<div class="lt-when">'+when+'</div></td>'
+      +'<td><span class="badge" style="background:'+B.bg+';color:'+B.c+';border:1px solid '+B.bd+'">'+B.label+'</span></td>'
+      +'<td>'+(x.pct===null?'<span class="text-muted">&mdash;</span>':'<div class="lt-bar"><div class="lt-fill" style="width:'+x.pct+'%;background:'+B.c+'"></div></div><div class="lt-when">'+x.pct+'% elapsed</div>')+'</td>'
+      +'<td class="text-right font-mono">'+fmt(x.u.rent)+'</td>'
+      +'<td class="text-right"><button class="btn btn-ghost btn-xs" onclick="renew(\''+x.u.id+'\')">Renew</button></td>'
+      +'</tr>';
+  }).join('');
+}
+
+function renew(id){
+  var u=units().filter(function(x){return x.id===id;})[0]; if(!u) return;
+  var d=tdata(), t=d[id]||{};
+  var cur=parseD(t.leaseEnd)||new Date();
+  var ns=new Date(cur.getTime()+86400000);
+  var ne=new Date(ns.getFullYear()+1,ns.getMonth(),ns.getDate()-1);
+  showModal('Renew lease &mdash; '+esc(u.tenant),
+    '<p style="font-size:14px;margin-bottom:14px">The new term starts the day after the current lease ends. Adjust anything below before saving.</p>'
+    +'<div class="grid-2" style="gap:12px">'
+    +'<div class="form-group"><label for="rS">New start</label><input id="rS" type="date" value="'+iso(ns)+'" class="w-full"></div>'
+    +'<div class="form-group"><label for="rE">New end</label><input id="rE" type="date" value="'+iso(ne)+'" class="w-full"></div>'
+    +'<div class="form-group"><label for="rR">Current rent</label><input id="rR" type="number" value="'+(u.rent||0)+'" class="w-full" disabled></div>'
+    +'<div class="form-group"><label for="rN">New rent</label><input id="rN" type="number" value="'+(u.rent||0)+'" class="w-full"></div>'
+    +'</div>'
+    +'<div id="rDelta" style="font-size:13px;padding:10px 12px;border-radius:var(--r);background:var(--bg);border:1px solid var(--border)"></div>'
+    +'<p class="form-hint">Renewing updates the lease dates here and the rent in your rent roll.</p>',
+    function(){
+      var s=$('rS').value, e=$('rE').value, nr=parseFloat($('rN').value)||0;
+      if(!s||!e){ toast('Both dates are required','error'); return false; }
+      if(parseD(e)<=parseD(s)){ toast('End must be after start','error'); return false; }
+      t.leaseStart=s; t.leaseEnd=e; d[id]=t; lk.set('tenants',d);
+      var us=units(); us.forEach(function(x){ if(x.id===id) x.rent=nr; }); lk.set('units',us);
+      alerts(); kpis(); render(); toast('Lease renewed to '+fmtD(e).replace(/&mdash;/,''));
+    },'Save renewal');
+  var upd=function(){
+    var old=+u.rent||0, nw=parseFloat($('rN').value)||0, diff=nw-old;
+    var pctv=old?((diff/old)*100).toFixed(1):'0.0';
+    $('rDelta').innerHTML = diff===0
+      ? 'No change in rent. Annual income stays at <strong>'+fmt(old*12)+'</strong>.'
+      : (diff>0?'Increase':'Reduction')+' of <strong>'+fmt(Math.abs(diff))+'/month</strong> ('+pctv+'%). Annual income moves from '+fmt(old*12)+' to <strong>'+fmt(nw*12)+'</strong>.';
+  };
+  $('rN').addEventListener('input',upd); upd();
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  buildSidebar('tenants');
+  Array.prototype.forEach.call($('ltFilters').querySelectorAll('.filter-btn'),function(b){
+    b.addEventListener('click',function(){
+      filt=b.dataset.f;
+      Array.prototype.forEach.call($('ltFilters').querySelectorAll('.filter-btn'),function(x){x.classList.remove('active');});
+      b.classList.add('active'); render();
+    });
+  });
+  alerts(); kpis(); render();
+});
+</script>
 </body>
 </html>
